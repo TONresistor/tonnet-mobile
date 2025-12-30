@@ -1,0 +1,410 @@
+/*
+ * Tonnet Mobile - Main Stylesheet
+ * Import this file as the main entry point for all styles
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   CSS Variables - Theme Definitions
+   ============================================ */
+
+@layer base {
+  :root, [data-theme="resistance-dog"] {
+    /* Resistance Dog Theme (Default) - Blue TON */
+    --background: 240 20% 14%;              /* #1a1a2e */
+    --background-secondary: 240 24% 12%;    /* #16162a */
+    --foreground: 0 0% 100%;                /* #ffffff */
+    --card: 210 24% 18%;                    /* #232e3c */
+    --card-foreground: 0 0% 96%;
+    --popover: 210 24% 18%;                 /* #232e3c */
+    --popover-foreground: 0 0% 96%;
+    --primary: 210 44% 54%;                 /* #5288c1 - Bleu TON */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 24% 18%;               /* #232e3c */
+    --secondary-foreground: 0 0% 96%;
+    --muted: 210 22% 15%;                   /* #1b2734 */
+    --muted-foreground: 220 9% 46%;         /* #6b7280 */
+    --accent: 207 83% 68%;                  /* #6ab2f2 */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 356 82% 58%;             /* #ec3942 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 22% 22%;                  /* #2b3d4f */
+    --input: 210 24% 18%;                   /* #232e3c */
+    --ring: 207 83% 68%;                    /* #6ab2f2 */
+    --radius: 0.5rem;
+
+    /* Status colors */
+    --success: 142 76% 36%;                 /* #22c55e */
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;                  /* #f59e0b */
+    --warning-foreground: 0 0% 0%;
+    --info: 199 89% 48%;                    /* #0ea5e9 */
+    --info-foreground: 0 0% 100%;
+  }
+
+  [data-theme="utya-duck"] {
+    /* Utya Duck Theme - Yellow Accent */
+    --background: 50 100% 50%;              /* #FFE600 - Jaune vif */
+    --background-secondary: 48 100% 45%;    /* #E6CF00 - Jaune plus fonce */
+    --foreground: 0 0% 8%;                  /* #141414 - Texte noir */
+    --card: 52 100% 55%;                    /* #FFE033 - Jaune clair pour cards */
+    --card-foreground: 0 0% 8%;
+    --popover: 50 100% 50%;                 /* #FFE600 */
+    --popover-foreground: 0 0% 8%;
+    --primary: 200 85% 55%;                 /* #2AABEE - Bleu Telegram */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 48 90% 50%;                /* #E6C700 - Jaune dore */
+    --secondary-foreground: 0 0% 8%;
+    --muted: 48 80% 60%;                    /* #E6D14D - Jaune moyen */
+    --muted-foreground: 0 0% 20%;           /* #333333 - Gris fonce */
+    --accent: 200 80% 45%;                  /* #1E96D1 - Bleu fonce */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 80% 45%;               /* #CC2929 - Rouge */
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 70% 35%;                   /* #998219 - Bordure marron-or */
+    --input: 52 100% 55%;                   /* #FFE033 */
+    --ring: 200 85% 55%;                    /* #2AABEE - Bleu Telegram */
+    --radius: 0.5rem;
+
+    /* Status colors */
+    --success: 142 80% 30%;                 /* #0F8C3D - Vert fonce */
+    --success-foreground: 0 0% 100%;
+    --warning: 15 90% 40%;                  /* #C24D0A - Rouge-orange */
+    --warning-foreground: 0 0% 100%;
+    --info: 210 90% 35%;                    /* #0959A6 - Bleu fonce */
+    --info-foreground: 0 0% 100%;
+  }
+
+  /* ============================================
+     Base Styles
+     ============================================ */
+
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  html {
+    height: 100%;
+    /* Enable safe area insets */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ============================================
+     Scrollbar Styles
+     ============================================ */
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(var(--background));
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted));
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+
+  /* Hide scrollbar on mobile for cleaner look */
+  @media (max-width: 768px) {
+    ::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }
+  }
+
+  /* Theme-specific scrollbar for Utya Duck */
+  [data-theme="utya-duck"] ::-webkit-scrollbar-track {
+    background: hsl(50 100% 50%);
+  }
+
+  [data-theme="utya-duck"] ::-webkit-scrollbar-thumb {
+    background: hsl(40 70% 35%);
+  }
+
+  [data-theme="utya-duck"] ::-webkit-scrollbar-thumb:hover {
+    background: hsl(40 70% 25%);
+  }
+}
+
+/* ============================================
+   Safe Area Classes (Notch, Home Indicator)
+   ============================================ */
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+.safe-area-all {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-horizontal {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.safe-area-vertical {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Margin variants */
+.safe-margin-top {
+  margin-top: env(safe-area-inset-top);
+}
+
+.safe-margin-bottom {
+  margin-bottom: env(safe-area-inset-bottom);
+}
+
+/* ============================================
+   Gradient Classes
+   ============================================ */
+
+.gradient-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+}
+
+.gradient-primary-hover {
+  background: linear-gradient(135deg, hsl(var(--primary) / 0.85), hsl(var(--accent) / 0.85));
+}
+
+.gradient-primary-vertical {
+  background: linear-gradient(180deg, hsl(var(--primary)), hsl(var(--accent)));
+}
+
+.gradient-muted {
+  background: linear-gradient(135deg, hsl(var(--muted)), hsl(var(--background)));
+}
+
+.gradient-connecting {
+  background: linear-gradient(135deg, hsl(var(--muted)), hsl(var(--card)));
+}
+
+.gradient-card {
+  background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--background)));
+}
+
+.gradient-success {
+  background: linear-gradient(135deg, hsl(var(--success)), hsl(142 76% 42%));
+}
+
+.gradient-destructive {
+  background: linear-gradient(135deg, hsl(var(--destructive)), hsl(356 82% 65%));
+}
+
+/* ============================================
+   Spring Animations
+   ============================================ */
+
+.spring {
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.spring-smooth {
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Text truncation */
+.truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.truncate-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ============================================
+   Tab Transitions (Desktop)
+   ============================================ */
+
+.tab-enter {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.tab-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.tab-exit {
+  opacity: 1;
+}
+
+.tab-exit-active {
+  opacity: 0;
+  transition: opacity 100ms ease-in;
+}
+
+/* ============================================
+   Animation Classes
+   ============================================ */
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px hsl(var(--primary) / 0);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 300ms ease-out;
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 300ms ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 200ms ease-out;
+}
+
+/* ============================================
+   Component-Specific Styles
+   ============================================ */
+
+/* Button base styles with gradient support */
+.btn-gradient {
+  @apply gradient-primary text-white font-medium rounded-xl;
+  @apply transition-all duration-200;
+  @apply active:scale-[0.98];
+}
+
+.btn-gradient:hover {
+  @apply gradient-primary-hover;
+}
+
+/* Card with subtle shadow */
+.card-elevated {
+  @apply bg-card rounded-xl;
+  box-shadow: 0 2px 8px hsl(var(--background) / 0.3);
+}
+
+/* Input focus ring */
+.input-focus {
+  @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background;
+}
+
+/* ============================================
+   Import Mobile-Specific Styles
+   ============================================ */
+
+@import './mobile.css';

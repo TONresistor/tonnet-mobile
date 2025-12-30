@@ -1,0 +1,284 @@
+@import "tailwindcss";
+
+/* ============================================
+   Theme Configuration for Tailwind v4
+   ============================================ */
+
+@theme {
+  /* Dynamic theme - references CSS custom properties */
+  --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --radius-default: 0.5rem;
+}
+
+/* ============================================
+   CSS Variables for Dynamic Theming
+   ============================================ */
+
+:root, [data-theme="resistance-dog"] {
+  --background: #17212b;
+  --background-secondary: #0e1621;
+  --foreground: #f5f5f5;
+  --card: #232e3c;
+  --card-foreground: #f5f5f5;
+  --popover: #232e3c;
+  --popover-foreground: #f5f5f5;
+  --primary: #5288c1;
+  --primary-foreground: #ffffff;
+  --secondary: #232e3c;
+  --secondary-foreground: #f5f5f5;
+  --muted: #1b2734;
+  --muted-foreground: #708499;
+  --accent: #6ab2f2;
+  --accent-foreground: #ffffff;
+  --destructive: #ec3942;
+  --destructive-foreground: #ffffff;
+  --border: #2b3d4f;
+  --input: #232e3c;
+  --ring: #6ab2f2;
+  --success: #22c55e;
+  --success-foreground: #ffffff;
+  --warning: #f59e0b;
+  --warning-foreground: #000000;
+  --info: #0ea5e9;
+  --info-foreground: #ffffff;
+}
+
+[data-theme="utya-duck"] {
+  --background: #FFE600;
+  --background-secondary: #FFD900;
+  --foreground: #141414;
+  --card: #FFEB33;
+  --card-foreground: #141414;
+  --popover: #FFE600;
+  --popover-foreground: #141414;
+  --primary: #2AABEE;
+  --primary-foreground: #ffffff;
+  --secondary: #F0D000;
+  --secondary-foreground: #141414;
+  --muted: #F0DC4D;
+  --muted-foreground: #262626;
+  --accent: #1E96D1;
+  --accent-foreground: #ffffff;
+  --destructive: #CC2929;
+  --destructive-foreground: #ffffff;
+  --border: #998219;
+  --input: #FFE84D;
+  --ring: #2AABEE;
+  --success: #0F8C3D;
+  --success-foreground: #ffffff;
+  --warning: #C24D0A;
+  --warning-foreground: #ffffff;
+  --info: #0959A6;
+  --info-foreground: #ffffff;
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ============================================
+   Utility Classes
+   ============================================ */
+
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* ============================================
+   Custom Scrollbar
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+[data-theme="utya-duck"] ::-webkit-scrollbar-track {
+  background: #FFE600;
+}
+
+[data-theme="utya-duck"] ::-webkit-scrollbar-thumb {
+  background: #998219;
+}
+
+[data-theme="utya-duck"] ::-webkit-scrollbar-thumb:hover {
+  background: #665610;
+}
+
+/* ============================================
+   Gradient Utilities
+   ============================================ */
+
+.gradient-primary {
+  background: linear-gradient(to right, var(--primary), var(--accent));
+}
+
+.gradient-primary-hover {
+  background: linear-gradient(to right, color-mix(in srgb, var(--primary) 80%, transparent), color-mix(in srgb, var(--accent) 80%, transparent));
+}
+
+.gradient-muted {
+  background: linear-gradient(to right, var(--muted), var(--background));
+}
+
+.gradient-connecting {
+  background: linear-gradient(to right, var(--muted), var(--card));
+}
+
+.gradient-card {
+  background: linear-gradient(to bottom, var(--card), var(--background));
+}
+
+/* ============================================
+   Safe Area Classes (for notches)
+   ============================================ */
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+.safe-area-all {
+  padding-top: env(safe-area-inset-top);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+}
+
+/* ============================================
+   Tab Transitions
+   ============================================ */
+
+.tab-enter {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.tab-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.tab-exit {
+  opacity: 1;
+}
+
+.tab-exit-active {
+  opacity: 0;
+  transition: opacity 100ms ease-in;
+}
+
+/* ============================================
+   Touch Interactions
+   ============================================ */
+
+@media (hover: none) and (pointer: coarse) {
+  .touch-feedback:active {
+    opacity: 0.7;
+  }
+
+  button:active,
+  [role="button"]:active {
+    transform: scale(0.98);
+  }
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}

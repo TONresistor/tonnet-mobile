@@ -1,0 +1,50 @@
+# Privacy Blocklist for Tonnet Browser
+# Known trackers and analytics domains
+
+# Google Analytics & Tag Manager
+google-analytics.com
+googletagmanager.com
+analytics.google.com
+
+# Google Ads
+doubleclick.net
+googlesyndication.com
+googleadservices.com
+adservice.google.com
+pagead2.googlesyndication.com
+
+# Facebook
+connect.facebook.net
+pixel.facebook.com
+graph.facebook.com
+
+# Twitter/X Ads
+ads.twitter.com
+ads-api.twitter.com
+analytics.twitter.com
+
+# Microsoft
+clarity.ms
+browser.events.data.microsoft.com
+
+# Common Analytics
+hotjar.com
+fullstory.com
+segment.io
+segment.com
+mixpanel.com
+amplitude.com
+heap.io
+heapanalytics.com
+
+# Amazon Ads
+advertising.amazon.com
+aax.amazon-adsystem.com
+
+# Other trackers
+scorecardresearch.com
+quantserve.com
+taboola.com
+outbrain.com
+criteo.com
+adsrvr.org

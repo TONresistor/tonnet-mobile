@@ -1,0 +1,6 @@
+# This directory contains Go libraries compiled as .aar files
+# Build them using: ./scripts/build-go-libs.sh
+#
+# Expected files:
+#   - tonutils-proxy.aar
+#   - tonutils-storage.aar
