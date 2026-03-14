@@ -16,8 +16,6 @@ describe('Settings Store', () => {
       currentUrl: 'ton://landing',
       canGoBack: false,
       canGoForward: false,
-      isMenuOpen: false,
-      isSearchFocused: false,
       activeView: 'landing',
       reloadCounter: 0,
     })

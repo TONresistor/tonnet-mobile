@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { App as CapacitorApp } from '@capacitor/app'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useSettingsStore } from '@/stores/settings'
+import { useShallow } from 'zustand/react/shallow'
 import { usePreferences, usePreferencesStore } from '@/stores/preferences'
 import { useProxyStore } from '@/stores/proxy'
 import { useProxy } from '@/hooks/useProxy'
@@ -39,19 +40,28 @@ function App() {
   // Bookmarks sheet state
   const [showBookmarks, setShowBookmarks] = useState(false)
 
-  const activeView = useSettingsStore((s) => s.activeView)
-  const currentUrl = useSettingsStore((s) => s.currentUrl)
-  const canGoBack = useSettingsStore((s) => s.canGoBack)
-  const canGoForward = useSettingsStore((s) => s.canGoForward)
-  const tabs = useSettingsStore((s) => s.tabs)
-  const activeTabId = useSettingsStore((s) => s.activeTabId)
-  const navigate = useSettingsStore((s) => s.navigate)
-  const goBack = useSettingsStore((s) => s.goBack)
-  const goForward = useSettingsStore((s) => s.goForward)
-  const reload = useSettingsStore((s) => s.reload)
-  const createTab = useSettingsStore((s) => s.createTab)
-  const closeTab = useSettingsStore((s) => s.closeTab)
-  const switchTab = useSettingsStore((s) => s.switchTab)
+  const {
+    activeView, currentUrl, canGoBack, canGoForward,
+    tabs, activeTabId,
+    navigate, goBack, goForward, reload,
+    createTab, closeTab, switchTab,
+  } = useSettingsStore(
+    useShallow((s) => ({
+      activeView: s.activeView,
+      currentUrl: s.currentUrl,
+      canGoBack: s.canGoBack,
+      canGoForward: s.canGoForward,
+      tabs: s.tabs,
+      activeTabId: s.activeTabId,
+      navigate: s.navigate,
+      goBack: s.goBack,
+      goForward: s.goForward,
+      reload: s.reload,
+      createTab: s.createTab,
+      closeTab: s.closeTab,
+      switchTab: s.switchTab,
+    }))
+  )
 
   // Apply theme to document
   useEffect(() => {
@@ -142,7 +152,6 @@ function App() {
         {showHeader && (
           <MobileHeader
             url={currentUrl}
-            onUrlChange={() => {}}
             onUrlSubmit={handleUrlSubmit}
             onRefresh={reload}
             onOpenBookmarks={() => setShowBookmarks(true)}

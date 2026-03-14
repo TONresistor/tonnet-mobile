@@ -39,7 +39,8 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
     public PrivacyWebViewClient(Bridge bridge) {
         super(bridge);
         this.context = bridge.getContext();
-        loadBlocklist();
+        // Load blocklist asynchronously to avoid ANR
+        new Thread(this::loadBlocklist).start();
     }
 
     /**
@@ -74,7 +75,7 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
         String url = request.getUrl().toString();
 
         // Handle .ton/.adnl requests through our proxy manually
-        if (host != null && (host.endsWith(".ton") || host.endsWith(".adnl") || host.endsWith(".t.me"))) {
+        if (host != null && (host.endsWith(".ton") || host.endsWith(".adnl"))) {
             Log.i(TAG, "[TON] " + request.getMethod() + " " + url);
             return proxyTonRequest(request);
         }
@@ -133,6 +134,7 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
      */
     private WebResourceResponse proxyTonRequest(WebResourceRequest request) {
         HttpURLConnection connection = null;
+        long t0 = System.currentTimeMillis();
         try {
             URL url = new URL(request.getUrl().toString());
 
@@ -144,6 +146,7 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
             connection.setRequestMethod(request.getMethod());
             connection.setConnectTimeout(30000);
             connection.setReadTimeout(60000);
+            connection.setUseCaches(false);
 
             // Copy headers from original request
             Map<String, String> headers = request.getRequestHeaders();
@@ -152,14 +155,16 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
             }
 
             // Execute request
+            long t1 = System.currentTimeMillis();
             connection.connect();
+            long t2 = System.currentTimeMillis();
 
             int responseCode = connection.getResponseCode();
+            long t3 = System.currentTimeMillis();
             String contentType = connection.getContentType();
+            int contentLength = connection.getContentLength();
 
             // Get response stream — pass directly to WebView for streaming.
-            // The WebView consumes the stream on its own I/O threads and releases
-            // the underlying connection back to the pool when done.
             InputStream inputStream;
             if (responseCode >= 400) {
                 inputStream = connection.getErrorStream();
@@ -183,7 +188,10 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
                 }
             }
 
-            Log.i(TAG, "[TON] Response: " + responseCode + " " + mimeType + " " + request.getUrl());
+            long t4 = System.currentTimeMillis();
+            Log.i(TAG, "[TON] " + responseCode + " " + mimeType + " len=" + contentLength
+                + " connect=" + (t2 - t1) + "ms firstByte=" + (t3 - t1) + "ms total=" + (t4 - t0) + "ms "
+                + request.getUrl());
 
             // Build response with streaming body
             WebResourceResponse response = new WebResourceResponse(mimeType, charset, inputStream);
@@ -198,7 +206,10 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
                         continue;
                     }
                     String key = entry.getKey().toLowerCase();
-                    // Strip headers that prevent iframe embedding — we are the browser
+                    // Strip framing/security headers that conflict with our iframe architecture.
+                    // We ARE the browser — .ton sites are loaded in an iframe inside Capacitor
+                    // (https://localhost), so X-Frame-Options and CSP must be stripped to avoid
+                    // frame-ancestors blocks and mixed-content CSP violations on sub-resources.
                     if (key.equals("x-frame-options") || key.equals("content-security-policy")) {
                         continue;
                     }

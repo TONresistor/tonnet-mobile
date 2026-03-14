@@ -271,7 +271,7 @@ export function SettingsPage() {
 
       {/* Log Modal */}
       {showLogs && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col">
+        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col" role="dialog" aria-modal="true" aria-label="Proxy Logs">
           <div className="flex items-center justify-between p-3 pt-12 border-b border-border bg-background">
             <span className="font-medium">Proxy Logs</span>
             <div className="flex gap-1">
@@ -369,6 +369,8 @@ function SettingsToggle({
     <button
       onClick={() => !disabled && onChange(!checked)}
       disabled={disabled}
+      role="switch"
+      aria-checked={checked}
       className={cn(
         "w-full flex items-center justify-between py-1",
         disabled && "opacity-50 cursor-not-allowed"

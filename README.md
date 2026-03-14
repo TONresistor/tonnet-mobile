@@ -16,7 +16,7 @@
 
 <p align="center">
   <a href="https://tonnet.resistance.dog"><img src="https://img.shields.io/badge/website-tonnet.resistance.dog-blue" alt="Website"></a>
-  <img src="https://img.shields.io/badge/version-1.0.1-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white" alt="Platform">
 </p>
@@ -75,7 +75,7 @@ Tonnet Browser combines the anonymity model of Tor with multi-hop garlic routing
 3. Open the APK and tap Install
 4. Launch Tonnet Browser
 
-**Requirements:** Android 8.0 (API 26) or higher
+**Requirements:** Android 9.0 (API 28) or higher
 
 ## Usage
 

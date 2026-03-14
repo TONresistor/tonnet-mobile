@@ -6,7 +6,26 @@ on:
   workflow_dispatch:
 
 jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Type check
+        run: npx tsc --noEmit
+      - name: Run tests
+        run: npm run test:run
+
   build:
+    needs: validate
     runs-on: ubuntu-latest
 
     steps:
@@ -46,7 +65,7 @@ jobs:
         run: ./gradlew assembleRelease
 
       - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
+        uses: ilharp/sign-android-release@v1.0.5
         id: sign_app
         with:
           releaseDirectory: android/app/build/outputs/apk/release
@@ -64,7 +83,7 @@ jobs:
 
       - name: Upload APK to Release
         if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: tonnet-browser-*.apk
         env:

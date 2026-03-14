@@ -105,9 +105,18 @@ Java_com_tonnet_browser_plugins_TonProxyPlugin_StartAnonymousProxyWithConfig(
     jclass clazz,
     jstring configJSON
 ) {
+    if (configJSON == NULL) {
+        return (*env)->NewStringUTF(env, "ERROR: null config");
+    }
     const char* configStr = (*env)->GetStringUTFChars(env, configJSON, NULL);
+    if (configStr == NULL) {
+        return (*env)->NewStringUTF(env, "ERROR: GetStringUTFChars failed");
+    }
     char* configCopy = strdup(configStr);
     (*env)->ReleaseStringUTFChars(env, configJSON, configStr);
+    if (configCopy == NULL) {
+        return (*env)->NewStringUTF(env, "ERROR: OOM");
+    }
 
     char* result = StartAnonymousProxyWithConfig(configCopy);
     free(configCopy);

@@ -19,10 +19,6 @@ export interface AppPreferences {
   circuitRotation: boolean
   rotateInterval: string
 
-  // Storage
-  downloadPath: string
-  autoSeed: boolean
-
   // Appearance
   theme: 'resistance-dog' | 'utya-duck'
 
@@ -41,10 +37,6 @@ export const defaultPreferences: AppPreferences = {
   anonymousMode: false,
   circuitRotation: false,
   rotateInterval: '10m',
-
-  // Storage
-  downloadPath: '',
-  autoSeed: true,
 
   // Appearance
   theme: 'resistance-dog',

@@ -48,3 +48,6 @@ coverage/
 # Temp
 *.tmp
 *.temp
+
+# Security reports (sensitive, not for VCS)
+VULNS.md

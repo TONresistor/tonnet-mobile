@@ -95,12 +95,6 @@ export interface Platform {
 
   /** Clear browsing data */
   clearBrowsingData(options?: ClearBrowsingDataOptions): Promise<void>
-
-  /** Get app version */
-  getAppVersion(): Promise<string>
-
-  /** Check if a feature is available on the current platform */
-  hasFeature(feature: 'proxy' | 'notifications'): boolean
 }
 
 // ============================================================================

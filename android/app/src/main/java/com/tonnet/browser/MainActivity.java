@@ -36,7 +36,9 @@ public class MainActivity extends BridgeActivity {
         if (webView != null) {
             WebSettings settings = webView.getSettings();
 
-            // Allow mixed content (HTTP in HTTPS context) for .ton sites
+            // MIXED_CONTENT_ALWAYS_ALLOW is required: Capacitor serves from https://localhost
+            // but .ton sites are loaded via HTTP through the local proxy in iframes.
+            // COMPATIBILITY_MODE blocks these HTTP iframes as mixed content.
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
             // Set custom User-Agent to avoid fingerprinting
@@ -83,6 +85,13 @@ public class MainActivity extends BridgeActivity {
             command -> command.run(),
             () -> {}
         );
+    }
+
+    @Override
+    public void onDestroy() {
+        // Clear proxy configuration when activity is destroyed
+        clearProxy();
+        super.onDestroy();
     }
 
     public void clearProxy() {

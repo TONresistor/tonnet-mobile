@@ -120,7 +120,7 @@ export function BrowserPage() {
       {/* Progress Bar */}
       {isLoading && (
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-transparent z-50 overflow-hidden">
-          <div className="h-full bg-[#2AABEE] progress-bar-animation" />
+          <div className="h-full bg-primary progress-bar-animation" />
         </div>
       )}
 

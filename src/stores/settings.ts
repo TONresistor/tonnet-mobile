@@ -5,7 +5,6 @@
  */
 
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 
 // View types: 'start' = search page, 'web' = external URL, 'settings', 'landing'
 type ActiveView = 'start' | 'web' | 'settings' | 'landing'
@@ -30,16 +29,10 @@ interface SettingsState {
   canGoForward: boolean
 
   // UI state
-  isMenuOpen: boolean
-  isSearchFocused: boolean
   activeView: ActiveView
   reloadCounter: number
 
-  // Legacy actions (operate on active tab)
-  setNavigation: (url: string, canGoBack: boolean, canGoForward: boolean) => void
-  setActiveView: (view: ActiveView) => void
-  setMenuOpen: (open: boolean) => void
-  setSearchFocused: (focused: boolean) => void
+  // Actions (operate on active tab)
   navigate: (url: string) => void
   goBack: () => void
   goForward: () => void
@@ -63,7 +56,7 @@ function getViewFromUrl(url: string): ActiveView {
 
 // Helper to generate unique tab ID
 function generateTabId(): string {
-  return `tab_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  return `tab_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
 }
 
 // Helper to get title from URL
@@ -93,45 +86,20 @@ function createInitialTab(): Tab {
   }
 }
 
-export const useSettingsStore = create<SettingsState>()(
-  persist(
-    (set, get) => {
-      const initialTab = createInitialTab()
+export const useSettingsStore = create<SettingsState>()((set, get) => {
+  const initialTab = createInitialTab()
 
-      return {
-        // Initial state with one tab
-        tabs: [initialTab],
-        activeTabId: initialTab.id,
-        currentUrl: 'ton://landing',
-        canGoBack: false,
-        canGoForward: false,
-        isMenuOpen: false,
-        isSearchFocused: false,
-        activeView: 'landing',
-        reloadCounter: 0,
+  return {
+    // Initial state with one tab
+    tabs: [initialTab],
+    activeTabId: initialTab.id,
+    currentUrl: 'ton://landing',
+    canGoBack: false,
+    canGoForward: false,
+    activeView: 'landing',
+    reloadCounter: 0,
 
-        setNavigation: (url, canGoBack, canGoForward) => {
-          set({
-            currentUrl: url,
-            canGoBack,
-            canGoForward,
-            activeView: getViewFromUrl(url),
-          })
-        },
-
-        setActiveView: (view) => {
-          set({ activeView: view })
-        },
-
-        setMenuOpen: (open) => {
-          set({ isMenuOpen: open })
-        },
-
-        setSearchFocused: (focused) => {
-          set({ isSearchFocused: focused })
-        },
-
-        navigate: (url) => {
+    navigate: (url) => {
           const state = get()
           const activeTab = state.tabs.find((t) => t.id === state.activeTabId)
           if (!activeTab) return
@@ -323,12 +291,4 @@ export const useSettingsStore = create<SettingsState>()(
           set({ tabs: updatedTabs })
         },
       }
-    },
-    {
-      name: 'tonnet-settings',
-      partialize: () => ({
-        // Don't persist navigation state - always start fresh
-      }),
-    }
-  )
-)
+})

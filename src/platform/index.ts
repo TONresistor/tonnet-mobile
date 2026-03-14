@@ -277,35 +277,6 @@ async function clearBrowsingData(options: ClearBrowsingDataOptions = {}): Promis
 }
 
 // ============================================================================
-// App Version
-// ============================================================================
-
-async function getAppVersion(): Promise<string> {
-  if (isDesktop && window.electron) {
-    return window.electron.getAppVersion()
-  }
-
-  // For Android, this would come from Capacitor App plugin
-  // For now, return a placeholder
-  return '1.0.0'
-}
-
-// ============================================================================
-// Feature Detection
-// ============================================================================
-
-function hasFeature(feature: 'proxy' | 'notifications'): boolean {
-  switch (feature) {
-    case 'proxy':
-      return isAndroid || isDesktop
-    case 'notifications':
-      return isAndroid || isDesktop
-    default:
-      return false
-  }
-}
-
-// ============================================================================
 // Platform Export
 // ============================================================================
 
@@ -322,8 +293,6 @@ export const platform: Platform = {
   navigate,
   on,
   clearBrowsingData,
-  getAppVersion,
-  hasFeature,
 }
 
 // Default export for convenience

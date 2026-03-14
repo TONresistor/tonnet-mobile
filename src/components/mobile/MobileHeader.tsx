@@ -36,7 +36,6 @@ function isTonSiteUrl(url: string): boolean {
 
 interface MobileHeaderProps {
   url: string
-  onUrlChange: (url: string) => void
   onUrlSubmit: (url: string) => void
   onRefresh?: () => void
   onOpenBookmarks: () => void
@@ -45,7 +44,6 @@ interface MobileHeaderProps {
 
 export function MobileHeader({
   url,
-  onUrlChange,
   onUrlSubmit,
   onRefresh,
   onOpenBookmarks,
@@ -95,7 +93,7 @@ export function MobileHeader({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const trimmedUrl = inputValue.trim().toLowerCase()
+    const trimmedUrl = inputValue.trim()
     if (trimmedUrl) {
       onUrlSubmit(trimmedUrl)
     }
@@ -103,7 +101,6 @@ export function MobileHeader({
 
   const handleClear = () => {
     setInputValue('')
-    onUrlChange('')
   }
 
   return (
@@ -137,7 +134,6 @@ export function MobileHeader({
               value={isFocused ? inputValue : displayValue}
               onChange={(e) => {
                 setInputValue(e.target.value)
-                onUrlChange(e.target.value)
               }}
               onFocus={(e) => {
                 setIsFocused(true)

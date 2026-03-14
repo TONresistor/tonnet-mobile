@@ -41,7 +41,6 @@ export function LandingPage() {
   // Listen for proxy progress events
   useEffect(() => {
     const subscription = platform.on('proxy:progress', (data) => {
-      console.log('[LandingPage] proxy:progress', data)
       setCurrentStep(data.step)
       setStepMessage(data.message)
     })
@@ -103,7 +102,7 @@ export function LandingPage() {
         {/* Progress Bar */}
         <div className="h-1.5 bg-foreground/10 rounded-full overflow-hidden mb-4">
           <div
-            className="h-full gradient-primary transition-all duration-400 ease-out"
+            className="h-full gradient-primary transition-all duration-300 ease-out"
             style={{ width: `${progressPercent}%` }}
           />
         </div>

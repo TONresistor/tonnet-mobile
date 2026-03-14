@@ -1,5 +1,6 @@
 package com.tonnet.browser.plugins;
 
+import android.app.Activity;
 import android.util.Log;
 
 import com.getcapacitor.Plugin;
@@ -129,6 +130,9 @@ public class TonProxyPlugin extends Plugin {
         }
 
         int port = call.getInt("port", 8080);
+        if (port <= 1024 || port > 65535) {
+            port = 8080;
+        }
         boolean anonymous = call.getBoolean("anonymous", false);
         boolean circuitRotation = call.getBoolean("circuitRotation", false);
         String rotateInterval = call.getString("rotateInterval", "10m");
@@ -178,7 +182,13 @@ public class TonProxyPlugin extends Plugin {
                     log( "Native StartProxy result: " + result);
                 }
 
-                getActivity().runOnUiThread(() -> {
+                Activity activity = getActivity();
+                if (activity == null || activity.isFinishing()) {
+                    logError("Activity destroyed, cannot post result");
+                    isRunning.set(false);
+                    return;
+                }
+                activity.runOnUiThread(() -> {
                     // Success if result is "OK", null, empty, or "ALREADY_STARTED"/"ALREADY_RUNNING"
                     boolean success = result == null || result.isEmpty() ||
                                       result.equals("OK") ||
@@ -190,13 +200,12 @@ public class TonProxyPlugin extends Plugin {
                         isAnonymous = finalAnonymous;
 
                         // Configure WebView to use proxy
-                        try {
-                            com.tonnet.browser.MainActivity mainActivity =
-                                (com.tonnet.browser.MainActivity) getActivity();
-                            mainActivity.configureProxy(finalPort);
-                            log( "WebView proxy configured on port " + finalPort);
-                        } catch (Exception e) {
-                            logError( "Failed to configure WebView proxy: " + e.getMessage());
+                        Activity currentActivity = getActivity();
+                        if (currentActivity instanceof com.tonnet.browser.MainActivity) {
+                            ((com.tonnet.browser.MainActivity) currentActivity).configureProxy(finalPort);
+                            log("WebView proxy configured on port " + finalPort);
+                        } else {
+                            logError("Activity is not MainActivity");
                         }
 
                         JSObject response = new JSObject();
@@ -224,7 +233,12 @@ public class TonProxyPlugin extends Plugin {
             } catch (Exception e) {
                 logError("Error starting proxy: " + e.getMessage());
                 isRunning.set(false);
-                getActivity().runOnUiThread(() -> {
+                Activity activityOnError = getActivity();
+                if (activityOnError == null || activityOnError.isFinishing()) {
+                    logError("Activity destroyed, cannot post result");
+                    return;
+                }
+                activityOnError.runOnUiThread(() -> {
                     call.reject("Failed to start proxy: " + e.getMessage());
 
                     JSObject event = new JSObject();
@@ -265,18 +279,23 @@ public class TonProxyPlugin extends Plugin {
                     log( "Native StopProxy result: " + result);
                 }
 
-                getActivity().runOnUiThread(() -> {
+                Activity activityStop = getActivity();
+                if (activityStop == null || activityStop.isFinishing()) {
+                    logError("Activity destroyed, cannot post result");
+                    isRunning.set(false);
+                    return;
+                }
+                activityStop.runOnUiThread(() -> {
                     isRunning.set(false);
                     isAnonymous = false;
 
                     // Clear WebView proxy configuration
-                    try {
-                        com.tonnet.browser.MainActivity mainActivity =
-                            (com.tonnet.browser.MainActivity) getActivity();
-                        mainActivity.clearProxy();
-                        log( "WebView proxy cleared");
-                    } catch (Exception e) {
-                        logError( "Failed to clear WebView proxy: " + e.getMessage());
+                    Activity currentActivity = getActivity();
+                    if (currentActivity instanceof com.tonnet.browser.MainActivity) {
+                        ((com.tonnet.browser.MainActivity) currentActivity).clearProxy();
+                        log("WebView proxy cleared");
+                    } else {
+                        logError("Activity is not MainActivity");
                     }
 
                     JSObject response = new JSObject();
@@ -287,7 +306,13 @@ public class TonProxyPlugin extends Plugin {
                 });
             } catch (Exception e) {
                 logError("Error stopping proxy: " + e.getMessage());
-                getActivity().runOnUiThread(() -> {
+                Activity activityStopError = getActivity();
+                if (activityStopError == null || activityStopError.isFinishing()) {
+                    logError("Activity destroyed, cannot post result");
+                    isRunning.set(false);
+                    return;
+                }
+                activityStopError.runOnUiThread(() -> {
                     // Still mark as stopped even on error
                     isRunning.set(false);
                     isAnonymous = false;
