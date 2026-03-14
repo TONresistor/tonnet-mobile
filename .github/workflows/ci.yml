@@ -130,7 +130,7 @@ jobs:
             exit 0
           fi
           COMMIT_TITLE=$(git log -1 --pretty=format:'%s')
-          COMMIT_DESC=$(git log -1 --pretty=format:'%b' | head -20)
+          COMMIT_DESC=$(git log -1 --pretty=format:'%b' | head -80)
           COMMIT_SHA=$(git rev-parse --short HEAD)
           COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
           TEXT="<b>[Mobile] ${COMMIT_TITLE}</b>"
