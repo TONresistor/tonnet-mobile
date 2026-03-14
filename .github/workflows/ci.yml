@@ -1,0 +1,136 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Validate: type-check, tests, build
+  # ─────────────────────────────────────────────
+  test:
+    name: Test & Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm run test:run
+
+      - name: Build web
+        run: npm run build
+
+      - name: Security audit
+        run: npm audit --audit-level=high || true
+
+  # ─────────────────────────────────────────────
+  # Android: build debug APK
+  # ─────────────────────────────────────────────
+  android:
+    name: Android Build
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install CMake
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmake;3.18.1"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web
+        run: npm run build
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tonnet-debug-${{ github.sha }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+
+  # ─────────────────────────────────────────────
+  # Notify: Telegram (push to main only)
+  # ─────────────────────────────────────────────
+  notify:
+    needs: [test, android]
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'push'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Send Telegram notification
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TEST_RESULT: ${{ needs.test.result }}
+          ANDROID_RESULT: ${{ needs.android.result }}
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Telegram secrets not configured, skipping"
+            exit 0
+          fi
+          COMMIT_TITLE=$(git log -1 --pretty=format:'%s')
+          COMMIT_DESC=$(git log -1 --pretty=format:'%b' | head -20)
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          TEXT="<b>[Mobile] ${COMMIT_TITLE}</b>"
+          if [ -n "$COMMIT_DESC" ]; then
+            printf -v TEXT '%s\n\n%s' "$TEXT" "$COMMIT_DESC"
+          fi
+          printf -v TEXT '%s\n\n<a href="%s">View commit %s</a>' "$TEXT" "$COMMIT_URL" "$COMMIT_SHA"
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d parse_mode="HTML" \
+            -d disable_web_page_preview="true" \
+            -d text="${TEXT}"

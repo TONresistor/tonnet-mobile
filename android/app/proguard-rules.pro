@@ -19,3 +19,25 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Capacitor framework
+-keep class com.getcapacitor.** { *; }
+-keep @com.getcapacitor.annotation.CapacitorPlugin class * { *; }
+-keepclassmembers class * {
+    @com.getcapacitor.PluginMethod *;
+}
+
+# Tonnet app classes used by Capacitor reflection
+-keep class com.tonnet.browser.plugins.TonProxyPlugin { *; }
+-keep class com.tonnet.browser.PrivacyWebViewClient { *; }
+-keep class com.tonnet.browser.MainActivity { *; }
+
+# JNI native methods
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# Keep JavaScript interfaces
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}

@@ -38,6 +38,12 @@ Java_com_tonnet_browser_plugins_TonProxyPlugin_StartProxy(
 ) {
     char* result = StartProxy((unsigned short)port);
     jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
+
+    // Free CGO-allocated memory to prevent leak
+    if (result != NULL) {
+        free(result);
+    }
+
     return jresult;
 }
 
@@ -53,6 +59,12 @@ Java_com_tonnet_browser_plugins_TonProxyPlugin_StopProxy(
 ) {
     char* result = StopProxy();
     jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
+
+    // Free CGO-allocated memory to prevent leak
+    if (result != NULL) {
+        free(result);
+    }
+
     return jresult;
 }
 
@@ -73,6 +85,12 @@ Java_com_tonnet_browser_plugins_TonProxyPlugin_StartAnonymousProxy(
 ) {
     char* result = StartAnonymousProxy((unsigned short)port);
     jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
+
+    // Free CGO-allocated memory to prevent leak
+    if (result != NULL) {
+        free(result);
+    }
+
     return jresult;
 }
 
@@ -95,6 +113,12 @@ Java_com_tonnet_browser_plugins_TonProxyPlugin_StartAnonymousProxyWithConfig(
     free(configCopy);
 
     jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
+
+    // Free CGO-allocated memory to prevent leak
+    if (result != NULL) {
+        free(result);
+    }
+
     return jresult;
 }
 
@@ -110,6 +134,12 @@ Java_com_tonnet_browser_plugins_TonProxyPlugin_StopAnonymousProxy(
 ) {
     char* result = StopAnonymousProxy();
     jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
+
+    // Free CGO-allocated memory to prevent leak
+    if (result != NULL) {
+        free(result);
+    }
+
     return jresult;
 }
 
@@ -125,6 +155,12 @@ Java_com_tonnet_browser_plugins_TonProxyPlugin_GetAnonymousProxyStatus(
 ) {
     char* result = GetAnonymousProxyStatus();
     jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
+
+    // Free CGO-allocated memory to prevent leak
+    if (result != NULL) {
+        free(result);
+    }
+
     return jresult;
 }
 
@@ -140,6 +176,12 @@ Java_com_tonnet_browser_plugins_TonProxyPlugin_GetProxyLogs(
 ) {
     char* result = GetProxyLogs();
     jstring jresult = (*env)->NewStringUTF(env, result ? result : "");
+
+    // Free CGO-allocated memory to prevent leak
+    if (result != NULL) {
+        free(result);
+    }
+
     return jresult;
 }
 

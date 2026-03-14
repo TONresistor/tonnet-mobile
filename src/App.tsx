@@ -39,21 +39,19 @@ function App() {
   // Bookmarks sheet state
   const [showBookmarks, setShowBookmarks] = useState(false)
 
-  const {
-    activeView,
-    currentUrl,
-    canGoBack,
-    canGoForward,
-    tabs,
-    activeTabId,
-    navigate,
-    goBack,
-    goForward,
-    reload,
-    createTab,
-    closeTab,
-    switchTab,
-  } = useSettingsStore()
+  const activeView = useSettingsStore((s) => s.activeView)
+  const currentUrl = useSettingsStore((s) => s.currentUrl)
+  const canGoBack = useSettingsStore((s) => s.canGoBack)
+  const canGoForward = useSettingsStore((s) => s.canGoForward)
+  const tabs = useSettingsStore((s) => s.tabs)
+  const activeTabId = useSettingsStore((s) => s.activeTabId)
+  const navigate = useSettingsStore((s) => s.navigate)
+  const goBack = useSettingsStore((s) => s.goBack)
+  const goForward = useSettingsStore((s) => s.goForward)
+  const reload = useSettingsStore((s) => s.reload)
+  const createTab = useSettingsStore((s) => s.createTab)
+  const closeTab = useSettingsStore((s) => s.closeTab)
+  const switchTab = useSettingsStore((s) => s.switchTab)
 
   // Apply theme to document
   useEffect(() => {

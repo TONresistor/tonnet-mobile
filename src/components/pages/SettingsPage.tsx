@@ -33,7 +33,7 @@ export function SettingsPage() {
   const [logs, setLogs] = useState<string[]>([])
   const [loadingLogs, setLoadingLogs] = useState(false)
 
-  const { draft, setDraft, save } = usePreferencesStore()
+  const { draft } = usePreferencesStore()
   const { status, disconnect, connect } = useProxyStore()
   const { resetBookmarks } = useBookmarksStore()
   const isConnected = status === 'connected'
@@ -58,11 +58,21 @@ export function SettingsPage() {
   // Use defaultPreferences as fallback during hydration
   const workingDraft = draft ?? defaultPreferences
 
-  // Auto-save helper - updates draft and saves immediately
+  // Auto-save helper - updates preferences atomically to avoid race conditions
   const updateAndSave = <K extends keyof typeof workingDraft>(key: K, value: typeof workingDraft[K]) => {
-    setDraft(key, value)
-    // Save on next tick to ensure draft is updated
-    setTimeout(() => save(), 0)
+    const store = usePreferencesStore.getState()
+    const newPreferences = { ...store.preferences, [key]: value }
+
+    // Apply theme change immediately if needed
+    if (key === 'theme') {
+      document.documentElement.setAttribute('data-theme', value as string)
+    }
+
+    usePreferencesStore.setState({
+      preferences: newPreferences,
+      draft: newPreferences,
+      hasChanges: false,
+    })
   }
 
   // Handle anonymous mode change - reconnect if currently connected

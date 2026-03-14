@@ -7,23 +7,30 @@
 import { useState, useEffect, useRef } from 'react'
 import { Globe, AlertCircle, Loader2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settings'
+import { useShallow } from 'zustand/react/shallow'
 import { useProxyStore } from '@/stores/proxy'
 import { Button } from '@/components/ui/button'
 
 const SWIPE_THRESHOLD = 80
 
 export function BrowserPage() {
-  const { currentUrl, reloadCounter, canGoBack, canGoForward, goBack, goForward } = useSettingsStore()
+  const { currentUrl, reloadCounter, canGoBack, canGoForward, goBack, goForward } =
+    useSettingsStore(
+      useShallow((s) => ({
+        currentUrl: s.currentUrl,
+        reloadCounter: s.reloadCounter,
+        canGoBack: s.canGoBack,
+        canGoForward: s.canGoForward,
+        goBack: s.goBack,
+        goForward: s.goForward,
+      }))
+    )
   const proxyStatus = useProxyStore((state) => state.status)
   const isProxyConnected = proxyStatus === 'connected'
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [iframeKey, setIframeKey] = useState(0)
-
-  // Progress bar
-  const [progress, setProgress] = useState(0)
-  const progressInterval = useRef<number | null>(null)
 
   // Swipe navigation
   const [swipeX, setSwipeX] = useState(0)
@@ -63,23 +70,6 @@ export function BrowserPage() {
     setIsLoading(true)
     setError(null)
   }, [currentUrl])
-
-  // Progress bar animation
-  useEffect(() => {
-    if (isLoading) {
-      setProgress(10)
-      progressInterval.current = window.setInterval(() => {
-        setProgress((p) => Math.min(p + 10, 90))
-      }, 300)
-    } else {
-      if (progressInterval.current) clearInterval(progressInterval.current)
-      setProgress(100)
-      setTimeout(() => setProgress(0), 200)
-    }
-    return () => {
-      if (progressInterval.current) clearInterval(progressInterval.current)
-    }
-  }, [isLoading])
 
   // Swipe handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -128,12 +118,9 @@ export function BrowserPage() {
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Progress Bar */}
-      {progress > 0 && (
-        <div className="absolute top-0 left-0 right-0 h-[3px] bg-transparent z-50">
-          <div
-            className="h-full bg-[#2AABEE] transition-all duration-200"
-            style={{ width: `${progress}%` }}
-          />
+      {isLoading && (
+        <div className="absolute top-0 left-0 right-0 h-[3px] bg-transparent z-50 overflow-hidden">
+          <div className="h-full bg-[#2AABEE] progress-bar-animation" />
         </div>
       )}
 

@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Privacy-focused WebViewClient that blocks known trackers.
@@ -30,9 +31,10 @@ import java.util.Set;
 public class PrivacyWebViewClient extends BridgeWebViewClient {
 
     private static final String TAG = "PrivacyWebViewClient";
-    private final Set<String> blockedDomains = new HashSet<>();
+    private volatile Set<String> blockedDomains = new HashSet<>();
     private final Context context;
-    private int blockedCount = 0;
+    private final AtomicInteger blockedCount = new AtomicInteger(0);
+    private volatile int proxyPort = 8080;
 
     public PrivacyWebViewClient(Bridge bridge) {
         super(bridge);
@@ -45,18 +47,19 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
      */
     private void loadBlocklist() {
         try {
+            Set<String> newDomains = new HashSet<>();
             InputStream is = context.getAssets().open("blocklist.txt");
             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
             String line;
             while ((line = reader.readLine()) != null) {
                 line = line.trim();
-                // Skip comments and empty lines
                 if (!line.isEmpty() && !line.startsWith("#")) {
-                    blockedDomains.add(line.toLowerCase());
+                    newDomains.add(line.toLowerCase());
                 }
             }
             reader.close();
-            Log.i(TAG, "Loaded " + blockedDomains.size() + " blocked domains");
+            blockedDomains = newDomains; // atomic reference swap
+            Log.i(TAG, "Loaded " + newDomains.size() + " blocked domains");
         } catch (IOException e) {
             Log.e(TAG, "Failed to load blocklist: " + e.getMessage());
         }
@@ -77,8 +80,8 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
         }
 
         if (host != null && shouldBlock(host.toLowerCase())) {
-            blockedCount++;
-            Log.d(TAG, "Blocked [" + blockedCount + "]: " + host);
+            blockedCount.incrementAndGet();
+            Log.d(TAG, "Blocked [" + blockedCount.get() + "]: " + host);
             // Return empty response to block the request
             return new WebResourceResponse(
                 "text/plain",
@@ -94,18 +97,13 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
      * Check if a domain should be blocked
      */
     private boolean shouldBlock(String host) {
-        // Direct match
-        if (blockedDomains.contains(host)) {
-            return true;
+        if (blockedDomains.contains(host)) return true;
+        int dot = host.indexOf('.');
+        while (dot != -1) {
+            host = host.substring(dot + 1);
+            if (blockedDomains.contains(host)) return true;
+            dot = host.indexOf('.');
         }
-
-        // Check if it's a subdomain of a blocked domain
-        for (String blocked : blockedDomains) {
-            if (host.endsWith("." + blocked)) {
-                return true;
-            }
-        }
-
         return false;
     }
 
@@ -113,15 +111,21 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
      * Get the number of blocked requests
      */
     public int getBlockedCount() {
-        return blockedCount;
+        return blockedCount.get();
     }
 
     /**
      * Reload the blocklist (can be called if user updates settings)
      */
     public void reloadBlocklist() {
-        blockedDomains.clear();
         loadBlocklist();
+    }
+
+    /**
+     * Set the proxy port used for .ton requests
+     */
+    public void setProxyPort(int port) {
+        this.proxyPort = port;
     }
 
     /**
@@ -133,7 +137,7 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
             URL url = new URL(request.getUrl().toString());
 
             // Use our local proxy
-            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 8080));
+            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", this.proxyPort));
             connection = (HttpURLConnection) url.openConnection(proxy);
 
             // Set request method
@@ -152,9 +156,10 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
 
             int responseCode = connection.getResponseCode();
             String contentType = connection.getContentType();
-            String encoding = connection.getContentEncoding();
 
-            // Get response stream
+            // Get response stream — pass directly to WebView for streaming.
+            // The WebView consumes the stream on its own I/O threads and releases
+            // the underlying connection back to the pool when done.
             InputStream inputStream;
             if (responseCode >= 400) {
                 inputStream = connection.getErrorStream();
@@ -180,17 +185,24 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
 
             Log.i(TAG, "[TON] Response: " + responseCode + " " + mimeType + " " + request.getUrl());
 
-            // Build response with headers
+            // Build response with streaming body
             WebResourceResponse response = new WebResourceResponse(mimeType, charset, inputStream);
 
-            // Copy response headers
+            // Copy response headers, stripping framing restrictions
+            // since we ARE the browser (not a third-party iframe embedder)
             Map<String, List<String>> responseHeaders = connection.getHeaderFields();
             if (responseHeaders != null) {
                 java.util.HashMap<String, String> flatHeaders = new java.util.HashMap<>();
                 for (Map.Entry<String, List<String>> entry : responseHeaders.entrySet()) {
-                    if (entry.getKey() != null && entry.getValue() != null && !entry.getValue().isEmpty()) {
-                        flatHeaders.put(entry.getKey(), entry.getValue().get(0));
+                    if (entry.getKey() == null || entry.getValue() == null || entry.getValue().isEmpty()) {
+                        continue;
                     }
+                    String key = entry.getKey().toLowerCase();
+                    // Strip headers that prevent iframe embedding — we are the browser
+                    if (key.equals("x-frame-options") || key.equals("content-security-policy")) {
+                        continue;
+                    }
+                    flatHeaders.put(entry.getKey(), entry.getValue().get(0));
                 }
                 response.setResponseHeaders(flatHeaders);
             }
@@ -199,14 +211,30 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
             return response;
 
         } catch (Exception e) {
+            if (connection != null) {
+                connection.disconnect();
+            }
             Log.e(TAG, "[TON] Proxy error: " + e.getMessage() + " for " + request.getUrl());
             // Return error page
-            String errorHtml = "<html><body><h1>Connection Error</h1><p>" + e.getMessage() + "</p></body></html>";
+            String safeMessage = escapeHtml(e.getMessage());
+            String errorHtml = "<html><body><h1>Connection Error</h1><p>" + safeMessage + "</p></body></html>";
             return new WebResourceResponse(
                 "text/html",
                 "UTF-8",
                 new ByteArrayInputStream(errorHtml.getBytes())
             );
         }
+    }
+
+    /**
+     * Escape HTML special characters to prevent XSS
+     */
+    private static String escapeHtml(String s) {
+        if (s == null) return "";
+        return s.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 }

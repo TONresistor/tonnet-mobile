@@ -146,7 +146,12 @@ export const useSettingsStore = create<SettingsState>()(
           const title = getTitleFromUrl(url)
           
           // Update tab history
-          const newHistory = [...activeTab.history.slice(0, activeTab.historyIndex + 1), url]
+          const MAX_HISTORY = 100
+          const fullHistory = [...activeTab.history.slice(0, activeTab.historyIndex + 1), url]
+          // Trim oldest entries if history exceeds limit
+          const newHistory = fullHistory.length > MAX_HISTORY
+            ? fullHistory.slice(fullHistory.length - MAX_HISTORY)
+            : fullHistory
           const newHistoryIndex = newHistory.length - 1
 
           // Update the tab

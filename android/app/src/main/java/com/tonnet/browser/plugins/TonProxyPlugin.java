@@ -8,6 +8,8 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.JSObject;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * TonProxyPlugin - Capacitor plugin for TON Proxy
  *
@@ -22,9 +24,9 @@ public class TonProxyPlugin extends Plugin {
     private static final String TAG = "TonProxyPlugin";
     private static final int MAX_LOG_LINES = 200;
 
-    private boolean isRunning = false;
-    private int currentPort = 8080;
-    private boolean isAnonymous = false;
+    private final AtomicBoolean isRunning = new AtomicBoolean(false);
+    private volatile int currentPort = 8080;
+    private volatile boolean isAnonymous = false;
     private static boolean libraryLoaded = false;
     private static boolean anonymousLibraryLoaded = false;
 
@@ -116,7 +118,7 @@ public class TonProxyPlugin extends Plugin {
      */
     @PluginMethod
     public void start(PluginCall call) {
-        if (isRunning) {
+        if (!isRunning.compareAndSet(false, true)) {
             JSObject result = new JSObject();
             result.put("success", true);
             result.put("port", currentPort);
@@ -138,6 +140,7 @@ public class TonProxyPlugin extends Plugin {
         if (anonymous && !anonymousLibraryLoaded) {
             String errorMsg = "Anonymous proxy library not available. Please ensure tonnet-proxy.so is installed.";
             logError( errorMsg);
+            isRunning.set(false);
             call.reject(errorMsg, "LIBRARY_NOT_LOADED");
             return;
         }
@@ -145,6 +148,7 @@ public class TonProxyPlugin extends Plugin {
         if (!anonymous && !libraryLoaded) {
             String errorMsg = "Standard proxy library not available. Please ensure tonutils-proxy.so is installed.";
             logError( errorMsg);
+            isRunning.set(false);
             call.reject(errorMsg, "LIBRARY_NOT_LOADED");
             return;
         }
@@ -182,7 +186,6 @@ public class TonProxyPlugin extends Plugin {
                                       result.equals("ALREADY_RUNNING");
 
                     if (success) {
-                        isRunning = true;
                         currentPort = finalPort;
                         isAnonymous = finalAnonymous;
 
@@ -210,6 +213,7 @@ public class TonProxyPlugin extends Plugin {
                     } else {
                         String errorMsg = result;
                         logError( "Proxy start failed: " + errorMsg);
+                        isRunning.set(false);
                         call.reject("Failed to start proxy: " + errorMsg);
 
                         JSObject event = new JSObject();
@@ -219,6 +223,7 @@ public class TonProxyPlugin extends Plugin {
                 });
             } catch (Exception e) {
                 logError("Error starting proxy: " + e.getMessage());
+                isRunning.set(false);
                 getActivity().runOnUiThread(() -> {
                     call.reject("Failed to start proxy: " + e.getMessage());
 
@@ -235,7 +240,7 @@ public class TonProxyPlugin extends Plugin {
      */
     @PluginMethod
     public void stop(PluginCall call) {
-        if (!isRunning) {
+        if (!isRunning.get()) {
             JSObject result = new JSObject();
             result.put("success", true);
             result.put("message", "Proxy not running");
@@ -261,7 +266,7 @@ public class TonProxyPlugin extends Plugin {
                 }
 
                 getActivity().runOnUiThread(() -> {
-                    isRunning = false;
+                    isRunning.set(false);
                     isAnonymous = false;
 
                     // Clear WebView proxy configuration
@@ -284,7 +289,7 @@ public class TonProxyPlugin extends Plugin {
                 logError("Error stopping proxy: " + e.getMessage());
                 getActivity().runOnUiThread(() -> {
                     // Still mark as stopped even on error
-                    isRunning = false;
+                    isRunning.set(false);
                     isAnonymous = false;
                     call.reject("Failed to stop proxy: " + e.getMessage());
                 });
@@ -303,7 +308,7 @@ public class TonProxyPlugin extends Plugin {
     @PluginMethod
     public void getStatus(PluginCall call) {
         JSObject result = new JSObject();
-        result.put("running", isRunning);
+        result.put("running", isRunning.get());
         result.put("port", currentPort);
         result.put("anonymous", isAnonymous);
         result.put("libraryLoaded", libraryLoaded);
@@ -317,7 +322,7 @@ public class TonProxyPlugin extends Plugin {
     @PluginMethod
     public void isConnected(PluginCall call) {
         JSObject result = new JSObject();
-        result.put("connected", isRunning);
+        result.put("connected", isRunning.get());
         call.resolve(result);
     }
 

@@ -282,3 +282,16 @@ body {
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
+
+@keyframes progress-indeterminate {
+  0%   { transform: translateX(-100%) scaleX(0.3); }
+  50%  { transform: translateX(0%) scaleX(0.6); }
+  100% { transform: translateX(100%) scaleX(0.3); }
+}
+
+.progress-bar-animation {
+  width: 100%;
+  transform-origin: left center;
+  will-change: transform;
+  animation: progress-indeterminate 1.4s cubic-bezier(0.65, 0.815, 0.735, 0.395) infinite;
+}
