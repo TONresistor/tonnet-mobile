@@ -22,7 +22,7 @@ import { BrowserPage } from '@/components/pages/BrowserPage'
 
 // Mobile components
 import { MobileHeader } from '@/components/mobile/MobileHeader'
-import { OperaNavBar } from '@/components/mobile/OperaNavBar'
+import { TelegramTabBar } from '@/components/mobile/TelegramTabBar'
 import { TabsSheet } from '@/components/mobile/TabsSheet'
 import { BookmarksSheet } from '@/components/mobile/BookmarksSheet'
 
@@ -159,16 +159,17 @@ function App() {
         )}
 
         {/* Main content area */}
-        <main className={`flex-1 overflow-auto ${showHeader ? 'pt-14' : ''} ${showUI ? 'pb-14' : ''}`}>
+        <main className={`flex-1 overflow-auto ${showHeader ? 'pt-14' : ''}`}>
           {renderPage()}
         </main>
 
-        {/* Opera-style bottom navigation - only show when connected */}
+        {/* Telegram-style tab bar - only show when connected */}
         {showUI && (
-          <OperaNavBar
+          <TelegramTabBar
             canGoBack={canGoBack}
             canGoForward={canGoForward}
             tabCount={tabs.length}
+            activeView={activeView}
             onBack={goBack}
             onForward={goForward}
             onNewTab={() => createTab()}

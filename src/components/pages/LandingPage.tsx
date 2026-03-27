@@ -11,6 +11,7 @@ import welcomeGif from '@/assets/welcome.gif'
 import loadingGif from '@/assets/loading.gif'
 import { APP_VERSION } from '@shared/constants'
 import { usePreferences } from '@/stores/preferences'
+import { normalizeUrl } from '@/lib/url'
 
 const CONNECTION_STEPS = [
   'Starting proxy...',
@@ -28,7 +29,7 @@ export function LandingPage() {
   // Navigate to homepage when connected
   useEffect(() => {
     if (isConnected) {
-      navigate(homepage)
+      navigate(normalizeUrl(homepage))
     }
   }, [isConnected, navigate, homepage])
 

@@ -153,13 +153,16 @@ export function SettingsPage() {
             label="Homepage"
             description="Page to open on new tab"
           >
-            <select
-              value={workingDraft.homepage}
-              onChange={(e) => updateAndSave('homepage', e.target.value)}
-              className="px-2 py-1 bg-background border border-border rounded text-foreground text-sm"
-            >
-              <option value="ton://start">Start Page</option>
-            </select>
+            <input
+              type="text"
+              value={workingDraft.homepage === 'ton://start' ? '' : workingDraft.homepage}
+              placeholder="Start Page"
+              onChange={(e) => {
+                const val = e.target.value.trim()
+                updateAndSave('homepage', val || 'ton://start')
+              }}
+              className="w-36 px-2 py-1 bg-background border border-border rounded text-foreground text-sm placeholder:text-muted-foreground"
+            />
           </SettingsRow>
         </SettingsSection>
 
