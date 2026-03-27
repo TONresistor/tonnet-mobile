@@ -9,4 +9,5 @@ export const DEFAULT_BOOKMARKS = [
   { id: '1', url: 'http://tonnet-sync-check.ton', title: 'Sync Check', createdAt: Date.now() },
   { id: '2', url: 'http://boards.ton', title: 'Boards', createdAt: Date.now() },
   { id: '3', url: 'http://piracy.ton', title: 'Piracy', createdAt: Date.now() },
+  { id: '4', url: 'http://dnslookup.ton', title: 'DNS Lookup', createdAt: Date.now() },
 ]

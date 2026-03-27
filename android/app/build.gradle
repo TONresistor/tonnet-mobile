@@ -2,6 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     namespace = "com.tonnet.browser"
+    ndkVersion "27.1.12297006"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.tonnet.browser"
