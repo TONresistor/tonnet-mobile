@@ -56,13 +56,14 @@ export const useProxyStore = create<ProxyState>()((set, get) => ({
     }
 
     // Read settings from preferences
-    const { anonymousMode } = usePreferencesStore.getState().preferences
+    const { anonymousMode, proxyPort } = usePreferencesStore.getState().preferences
 
     set({ error: null, status: 'connecting' })
 
     try {
       const result = await platform.proxy.connect({
         anonymous: anonymousMode,
+        port: proxyPort,
       })
 
       if (result.success) {

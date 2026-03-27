@@ -93,7 +93,7 @@ export function LandingPage() {
       </button>
 
       {/* Progress Section */}
-      <div className={`mt-8 w-[340px] transition-opacity duration-300 ${isConnecting ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`mt-8 w-[340px] transition-opacity duration-300 ${(isConnecting || error) ? 'opacity-100' : 'opacity-0'}`}>
         {/* Progress Bar */}
         <div className="h-1.5 bg-foreground/10 rounded-full overflow-hidden mb-4">
           <div

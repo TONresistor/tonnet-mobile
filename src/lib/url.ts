@@ -12,6 +12,12 @@ export function normalizeUrl(input: string): string {
   const trimmed = input.trim()
   if (!trimmed) return ''
 
+  // Block dangerous schemes
+  const lower = trimmed.toLowerCase()
+  if (lower.startsWith('javascript:') || lower.startsWith('data:') || lower.startsWith('vbscript:')) {
+    return ''
+  }
+
   // Handle ton:// protocol - pass through
   if (trimmed.startsWith('ton://')) {
     return trimmed

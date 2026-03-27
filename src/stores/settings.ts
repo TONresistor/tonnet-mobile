@@ -5,6 +5,7 @@
  */
 
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 // View types: 'start' = search page, 'web' = external URL, 'settings', 'landing'
 type ActiveView = 'start' | 'web' | 'settings' | 'landing'
@@ -86,7 +87,9 @@ function createInitialTab(): Tab {
   }
 }
 
-export const useSettingsStore = create<SettingsState>()((set, get) => {
+export const useSettingsStore = create<SettingsState>()(
+  persist(
+    (set, get) => {
   const initialTab = createInitialTab()
 
   return {
@@ -291,4 +294,24 @@ export const useSettingsStore = create<SettingsState>()((set, get) => {
           set({ tabs: updatedTabs })
         },
       }
-})
+    },
+    {
+      name: 'tonnet-settings',
+      partialize: (state) => ({
+        tabs: state.tabs,
+        activeTabId: state.activeTabId,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          const activeTab = state.tabs.find((t) => t.id === state.activeTabId)
+          if (activeTab) {
+            state.currentUrl = activeTab.url
+            state.activeView = getViewFromUrl(activeTab.url)
+            state.canGoBack = activeTab.historyIndex > 0
+            state.canGoForward = activeTab.historyIndex < activeTab.history.length - 1
+          }
+        }
+      },
+    }
+  )
+)

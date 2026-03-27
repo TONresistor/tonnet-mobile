@@ -104,7 +104,10 @@ const proxyApi = {
       emitEvent('proxy:progress', { step: 0, message: 'Starting proxy...' })
 
       try {
-        const result = await TonProxy.start({ port, anonymous })
+        const timeout = new Promise<{ success: false; port: 0 }>((resolve) =>
+          setTimeout(() => resolve({ success: false, port: 0 }), 60000)
+        )
+        const result = await Promise.race([TonProxy.start({ port, anonymous }), timeout])
 
         if (!result.success) {
           emitEvent('proxy:progress', { step: -1, message: 'Failed to start proxy' })
