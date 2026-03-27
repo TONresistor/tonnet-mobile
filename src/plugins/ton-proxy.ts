@@ -7,8 +7,6 @@ import { registerPlugin } from '@capacitor/core'
 export interface TonProxyStartOptions {
   port?: number
   anonymous?: boolean
-  rotateInterval?: string  // e.g., "5m", "10m", "15m", "30m"
-  circuitRotation?: boolean
 }
 
 export interface TonProxyStartResult {

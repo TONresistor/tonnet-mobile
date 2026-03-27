@@ -5,19 +5,15 @@
 
 import { useState, FormEvent } from 'react'
 import explorerGif from '@/assets/explorer.gif'
-import explorerYellowGif from '@/assets/explorer-yellow.gif'
 import tonIcon from '@/assets/ton.png'
-import { usePreferences } from '@/stores/preferences'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useSettingsStore } from '@/stores/settings'
 import { normalizeUrl } from '@/lib/url'
 
 export function StartPage() {
   const [searchInput, setSearchInput] = useState('')
-  const { theme } = usePreferences()
   const isMobile = useIsMobile()
   const { navigate } = useSettingsStore()
-  const currentExplorerGif = theme === 'utya-duck' ? explorerYellowGif : explorerGif
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault()
@@ -32,7 +28,7 @@ export function StartPage() {
       {/* Hero Section - centered */}
       <div className="flex flex-col items-center px-4">
         <img
-          src={currentExplorerGif}
+          src={explorerGif}
           alt="TON"
           className={isMobile ? 'w-[140px] h-[140px] mb-6' : 'w-[200px] h-[200px] mb-8'}
         />

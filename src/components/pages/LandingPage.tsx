@@ -8,9 +8,7 @@ import { useProxy } from '@/hooks/useProxy'
 import { platform } from '@/platform'
 import { useSettingsStore } from '@/stores/settings'
 import welcomeGif from '@/assets/welcome.gif'
-import welcomeYellowGif from '@/assets/welcome-yellow.gif'
 import loadingGif from '@/assets/loading.gif'
-import loadingYellowGif from '@/assets/loading-yellow.gif'
 import { APP_VERSION } from '@shared/constants'
 import { usePreferences } from '@/stores/preferences'
 
@@ -25,11 +23,7 @@ export function LandingPage() {
   const { navigate } = useSettingsStore()
   const [currentStep, setCurrentStep] = useState(-1)
   const [stepMessage, setStepMessage] = useState('')
-  const { theme, homepage } = usePreferences()
-  const isYellow = theme === 'utya-duck'
-
-  const currentWelcomeGif = isYellow ? welcomeYellowGif : welcomeGif
-  const currentLoadingGif = isYellow ? loadingYellowGif : loadingGif
+  const { homepage } = usePreferences()
 
   // Navigate to homepage when connected
   useEffect(() => {
@@ -64,7 +58,7 @@ export function LandingPage() {
     <div className="relative flex flex-col items-center justify-center h-full w-full bg-background-secondary">
       {/* Logo - switches between welcome and loading gif */}
       <img
-        src={isConnecting ? currentLoadingGif : currentWelcomeGif}
+        src={isConnecting ? loadingGif : welcomeGif}
         alt="TON"
         className="w-[200px] h-[200px] mb-8 transition-opacity duration-300"
       />

@@ -97,14 +97,14 @@ if (isAndroid) {
 
 const proxyApi = {
   connect: async (options: ProxyConnectOptions = {}): Promise<ProxyConnectResult> => {
-    const { port = 8080, anonymous = false, rotateInterval, circuitRotation } = options
+    const { port = 8080, anonymous = false } = options
 
     if (isAndroid) {
       // Emit progress events for UI feedback
       emitEvent('proxy:progress', { step: 0, message: 'Starting proxy...' })
 
       try {
-        const result = await TonProxy.start({ port, anonymous, rotateInterval, circuitRotation })
+        const result = await TonProxy.start({ port, anonymous })
 
         if (!result.success) {
           emitEvent('proxy:progress', { step: -1, message: 'Failed to start proxy' })

@@ -68,34 +68,6 @@
   --info-foreground: #ffffff;
 }
 
-[data-theme="utya-duck"] {
-  --background: #FFE600;
-  --background-secondary: #FFD900;
-  --foreground: #141414;
-  --card: #FFEB33;
-  --card-foreground: #141414;
-  --popover: #FFE600;
-  --popover-foreground: #141414;
-  --primary: #2AABEE;
-  --primary-foreground: #ffffff;
-  --secondary: #F0D000;
-  --secondary-foreground: #141414;
-  --muted: #F0DC4D;
-  --muted-foreground: #262626;
-  --accent: #1E96D1;
-  --accent-foreground: #ffffff;
-  --destructive: #CC2929;
-  --destructive-foreground: #ffffff;
-  --border: #998219;
-  --input: #FFE84D;
-  --ring: #2AABEE;
-  --success: #0F8C3D;
-  --success-foreground: #ffffff;
-  --warning: #C24D0A;
-  --warning-foreground: #ffffff;
-  --info: #0959A6;
-  --info-foreground: #ffffff;
-}
 
 /* ============================================
    Base Styles
@@ -171,17 +143,6 @@ body {
   background: var(--muted-foreground);
 }
 
-[data-theme="utya-duck"] ::-webkit-scrollbar-track {
-  background: #FFE600;
-}
-
-[data-theme="utya-duck"] ::-webkit-scrollbar-thumb {
-  background: #998219;
-}
-
-[data-theme="utya-duck"] ::-webkit-scrollbar-thumb:hover {
-  background: #665610;
-}
 
 /* ============================================
    Gradient Utilities

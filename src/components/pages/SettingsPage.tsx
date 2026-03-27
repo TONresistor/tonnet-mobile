@@ -6,7 +6,6 @@
 import { useState } from 'react'
 import {
   Wifi,
-  Palette,
   Trash2,
   Info,
   Shield,
@@ -127,37 +126,6 @@ export function SettingsPage() {
             disabled={reconnecting}
           />
 
-          {/* Conditional: Show when anonymous mode is enabled */}
-          {workingDraft.anonymousMode && (
-            <div className="pl-4 space-y-3 pt-2 border-t border-border">
-              <SettingsToggle
-                label="Circuit Rotation"
-                description="Periodically change proxy circuit"
-                checked={workingDraft.circuitRotation}
-                onChange={(checked) => updateAndSave('circuitRotation', checked)}
-              />
-
-              {workingDraft.circuitRotation && (
-                <SettingsRow
-                  label="Rotation Interval"
-                  description="How often to rotate circuit"
-                >
-                  <select
-                    value={workingDraft.rotateInterval}
-                    onChange={(e) => updateAndSave('rotateInterval', e.target.value)}
-                    className="px-2 py-1 bg-background border border-border rounded text-foreground text-sm"
-                  >
-                    <option value="5m">5 min</option>
-                    <option value="10m">10 min</option>
-                    <option value="15m">15 min</option>
-                    <option value="30m">30 min</option>
-                  </select>
-                </SettingsRow>
-              )}
-            </div>
-          )}
-
-          {/* Other network settings */}
           <div className="pt-2 border-t border-border space-y-3">
             <SettingsToggle
               label="Auto-connect"
@@ -193,34 +161,6 @@ export function SettingsPage() {
               <option value="ton://start">Start Page</option>
             </select>
           </SettingsRow>
-        </SettingsSection>
-
-        {/* Appearance Section */}
-        <SettingsSection title="Appearance" icon={Palette}>
-          <div className="flex gap-2">
-            <button
-              onClick={() => updateAndSave('theme', 'resistance-dog')}
-              className={cn(
-                'flex-1 py-3 px-4 rounded-lg font-medium transition-all',
-                workingDraft.theme === 'resistance-dog'
-                  ? 'bg-[#5288c1] text-white'
-                  : 'bg-background-secondary text-muted-foreground'
-              )}
-            >
-              Resistance Dog
-            </button>
-            <button
-              onClick={() => updateAndSave('theme', 'utya-duck')}
-              className={cn(
-                'flex-1 py-3 px-4 rounded-lg font-medium transition-all',
-                workingDraft.theme === 'utya-duck'
-                  ? 'bg-[#FFE600] text-[#141414]'
-                  : 'bg-background-secondary text-muted-foreground'
-              )}
-            >
-              Utya Duck
-            </button>
-          </div>
         </SettingsSection>
 
         {/* Privacy Section */}
