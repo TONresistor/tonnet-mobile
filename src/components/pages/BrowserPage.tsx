@@ -195,6 +195,8 @@ export function BrowserPage() {
             onLoad={handleIframeLoad}
             onError={handleIframeError}
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            referrerPolicy="no-referrer"
+            allow=""
             title={displayUrl}
           />
         )}

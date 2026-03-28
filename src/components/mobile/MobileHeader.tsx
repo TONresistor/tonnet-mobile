@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settings'
 import { useProxyStore } from '@/stores/proxy'
 import { useBookmarksStore } from '@/stores/bookmarks'
+import { usePreferences } from '@/stores/preferences'
+import { normalizeUrl } from '@/lib/url'
 
 /**
  * Strip http:// prefix and format URL for display
@@ -52,6 +54,7 @@ export function MobileHeader({
   const [inputValue, setInputValue] = useState(url)
   const [isFocused, setIsFocused] = useState(false)
   const { navigate } = useSettingsStore()
+  const { homepage } = usePreferences()
   const isAnonymous = useProxyStore((state) => state.isAnonymous)
   const { bookmarks, addBookmark, removeBookmark } = useBookmarksStore()
 
@@ -108,7 +111,7 @@ export function MobileHeader({
       <div className="flex items-center h-14 px-1 gap-0">
         {/* Home Button */}
         <button
-          onClick={() => navigate('ton://start')}
+          onClick={() => navigate(normalizeUrl(homepage))}
           className="p-2 rounded-lg text-foreground active:bg-muted transition-colors"
           aria-label="Go home"
         >

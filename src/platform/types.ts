@@ -10,8 +10,6 @@
 export interface ProxyConnectOptions {
   port?: number
   anonymous?: boolean
-  rotateInterval?: string  // e.g., "5m", "10m", "15m", "30m"
-  circuitRotation?: boolean
 }
 
 export interface ProxyConnectResult {

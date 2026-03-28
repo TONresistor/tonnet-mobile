@@ -97,14 +97,21 @@ if (isAndroid) {
 
 const proxyApi = {
   connect: async (options: ProxyConnectOptions = {}): Promise<ProxyConnectResult> => {
-    const { port = 8080, anonymous = false, rotateInterval, circuitRotation } = options
+    const { port = 8080, anonymous = false } = options
 
     if (isAndroid) {
       // Emit progress events for UI feedback
-      emitEvent('proxy:progress', { step: 0, message: 'Starting proxy...' })
+      emitEvent('proxy:progress', { step: 0, message: anonymous ? 'Initializing tunnel...' : 'Starting proxy...' })
 
       try {
-        const result = await TonProxy.start({ port, anonymous, rotateInterval, circuitRotation })
+        let timedOut = false
+        const timeout = new Promise<{ success: false; port: 0 }>((resolve) =>
+          setTimeout(() => { timedOut = true; resolve({ success: false, port: 0 }) }, 60000)
+        )
+        const result = await Promise.race([TonProxy.start({ port, anonymous }), timeout])
+        if (timedOut) {
+          TonProxy.stop().catch(() => {})
+        }
 
         if (!result.success) {
           emitEvent('proxy:progress', { step: -1, message: 'Failed to start proxy' })
@@ -222,7 +229,7 @@ function on<T extends PlatformEventType>(
 // ============================================================================
 
 // Keys to preserve when clearing localStorage (app data, not browsing data)
-const PRESERVE_STORAGE_KEYS = ['tonnet-preferences', 'tonnet-bookmarks', 'tonnet-settings']
+const PRESERVE_STORAGE_KEYS = ['tonnet-preferences', 'tonnet-bookmarks']
 
 async function clearBrowsingData(options: ClearBrowsingDataOptions = {}): Promise<void> {
   const {
@@ -266,9 +273,12 @@ async function clearBrowsingData(options: ClearBrowsingDataOptions = {}): Promis
       await Promise.all(cacheNames.map((name) => window.caches.delete(name)))
     }
 
-    // Cookies and history require native implementation on Android
     if (isAndroid && (cookies || history)) {
-      console.info('Cookie and history clearing requires native Android implementation')
+      try {
+        await (TonProxy as any).clearBrowsingData()
+      } catch (e) {
+        console.warn('Native clear failed:', e)
+      }
     }
   } catch (error) {
     console.error('Failed to clear browsing data:', error)

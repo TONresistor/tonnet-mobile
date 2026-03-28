@@ -1,6 +1,7 @@
 package com.tonnet.browser.plugins;
 
 import android.app.Activity;
+import android.util.Base64;
 import android.util.Log;
 
 import com.getcapacitor.Plugin;
@@ -9,15 +10,21 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.JSObject;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.security.SecureRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * TonProxyPlugin - Capacitor plugin for TON Proxy
  *
- * This plugin manages the TON network proxy which enables
- * browsing .ton domains through the TON DHT network.
- *
- * Uses libtonutils-proxy.so (standard) and libtonnet-proxy.so (anonymous).
+ * Manages the TON network proxy for browsing .ton domains.
+ * Generates config.json and nodes-pool.json matching tonutils-proxy format,
+ * then delegates to StartProxyInDir.
  */
 @CapacitorPlugin(name = "TonProxy")
 public class TonProxyPlugin extends Plugin {
@@ -29,7 +36,6 @@ public class TonProxyPlugin extends Plugin {
     private volatile int currentPort = 8080;
     private volatile boolean isAnonymous = false;
     private static boolean libraryLoaded = false;
-    private static boolean anonymousLibraryLoaded = false;
 
     // Java log buffer
     private static final java.util.LinkedList<String> logBuffer = new java.util.LinkedList<>();
@@ -68,7 +74,6 @@ public class TonProxyPlugin extends Plugin {
     // Load the native libraries
     static {
         try {
-            // Load the standard Go proxy library
             System.loadLibrary("tonutils-proxy");
             addToBuffer("[Java] Loaded tonutils-proxy native library");
             libraryLoaded = true;
@@ -78,44 +83,157 @@ public class TonProxyPlugin extends Plugin {
         }
 
         try {
-            // Load the anonymous Go proxy library
-            System.loadLibrary("tonnet-proxy");
-            addToBuffer("[Java] Loaded tonnet-proxy native library");
-            anonymousLibraryLoaded = true;
-        } catch (UnsatisfiedLinkError e) {
-            anonymousLibraryLoaded = false;
-            addToBuffer("[Java][ERROR] Failed to load tonnet-proxy: " + e.getMessage());
-        }
-
-        try {
-            // Load our JNI bridge (links to both libraries)
             System.loadLibrary("tonproxy-jni");
             addToBuffer("[Java] Loaded tonproxy-jni bridge library");
         } catch (UnsatisfiedLinkError e) {
             libraryLoaded = false;
-            anonymousLibraryLoaded = false;
             addToBuffer("[Java][ERROR] Failed to load tonproxy-jni: " + e.getMessage());
         }
     }
 
-    // Native method declarations - Standard proxy (tonutils-proxy)
-    private static native String StartProxy(short port);
+    // Native method declarations
+    private static native String StartProxyInDir(short port, String dirPath);
     private static native String StopProxy();
 
-    // Native method declarations - Anonymous proxy (tonnet-proxy)
-    private static native String StartAnonymousProxy(short port);
-    private static native String StartAnonymousProxyWithConfig(String configJSON);
-    private static native String StopAnonymousProxy();
-    private static native String GetAnonymousProxyStatus();
-    private static native String GetProxyLogs();
-    private static native void ClearProxyLogs();
+    /**
+     * Generate a JSON array of 32 random unsigned bytes (0-255).
+     */
+    private static JSONArray generateKeyArray(SecureRandom rng) throws Exception {
+        byte[] bytes = new byte[32];
+        rng.nextBytes(bytes);
+        return bytesToIntArray(bytes);
+    }
+
+    /**
+     * Convert a byte array to a JSON array of unsigned integers (0-255).
+     */
+    private static JSONArray bytesToIntArray(byte[] bytes) throws Exception {
+        JSONArray arr = new JSONArray();
+        for (byte b : bytes) {
+            arr.put(b & 0xFF);
+        }
+        return arr;
+    }
+
+    /**
+     * Write or patch config.json in proxyDir.
+     * If the file already exists, only TunnelSectionsNum and NodesPoolConfigPath are patched.
+     * Otherwise a fresh config with new random keys is generated.
+     */
+    private void writeProxyConfig(File proxyDir, boolean tunnelEnabled) throws Exception {
+        File configFile = new File(proxyDir, "config.json");
+        String nodesPoolPath = tunnelEnabled
+            ? new File(proxyDir, "nodes-pool.json").getAbsolutePath()
+            : "";
+        int tunnelSections = tunnelEnabled ? 2 : 1;
+
+        if (configFile.exists()) {
+            // Patch existing config — preserve keys
+            StringBuilder sb = new StringBuilder();
+            try (FileReader reader = new FileReader(configFile)) {
+                char[] buf = new char[4096];
+                int n;
+                while ((n = reader.read(buf)) != -1) {
+                    sb.append(buf, 0, n);
+                }
+            }
+            JSONObject config = new JSONObject(sb.toString());
+            JSONObject tunnel = config.getJSONObject("TunnelConfig");
+            tunnel.put("TunnelSectionsNum", tunnelSections);
+            tunnel.put("NodesPoolConfigPath", nodesPoolPath);
+            try (FileWriter writer = new FileWriter(configFile)) {
+                writer.write(config.toString(2));
+            }
+            log("Patched existing config.json (tunnel=" + tunnelEnabled + ")");
+            return;
+        }
+
+        // Generate fresh config
+        SecureRandom rng = new SecureRandom();
+
+        JSONObject channelsConfig = new JSONObject();
+        JSONObject supportedCoins = new JSONObject();
+        JSONObject tonCoin = new JSONObject();
+        tonCoin.put("Enabled", true);
+        supportedCoins.put("Ton", tonCoin);
+        supportedCoins.put("Jettons", new JSONObject());
+        supportedCoins.put("ExtraCurrencies", new JSONObject());
+        channelsConfig.put("SupportedCoins", supportedCoins);
+        channelsConfig.put("BufferTimeToCommit", 10800);
+        channelsConfig.put("QuarantineDurationSec", 21600);
+        channelsConfig.put("ConditionalCloseDurationSec", 10800);
+        channelsConfig.put("MinSafeVirtualChannelTimeoutSec", 300);
+
+        JSONObject payments = new JSONObject();
+        payments.put("ADNLServerKey", generateKeyArray(rng));
+        payments.put("PaymentsNodeKey", generateKeyArray(rng));
+        payments.put("WalletPrivateKey", generateKeyArray(rng));
+        payments.put("DBPath", "./payments-db/");
+        payments.put("SecureProofPolicy", false);
+        payments.put("ChannelsConfig", channelsConfig);
+
+        JSONObject tunnelConfig = new JSONObject();
+        tunnelConfig.put("TunnelServerKey", generateKeyArray(rng));
+        tunnelConfig.put("TunnelThreads", Runtime.getRuntime().availableProcessors());
+        tunnelConfig.put("TunnelSectionsNum", tunnelSections);
+        tunnelConfig.put("NodesPoolConfigPath", nodesPoolPath);
+        tunnelConfig.put("PaymentsEnabled", false);
+        tunnelConfig.put("Payments", payments);
+
+        JSONObject config = new JSONObject();
+        config.put("Version", 1);
+        config.put("ADNLKey", generateKeyArray(rng));
+        config.put("CustomTunnelNetworkConfigPath", "");
+        config.put("TunnelConfig", tunnelConfig);
+
+        try (FileWriter writer = new FileWriter(configFile)) {
+            writer.write(config.toString(2));
+        }
+        log("Generated new config.json (tunnel=" + tunnelEnabled + ")");
+    }
+
+    /**
+     * Write nodes-pool.json if it does not already exist.
+     * Node keys are base64-decoded to byte arrays then stored as int arrays (0-255).
+     */
+    private void writeNodesPool(File proxyDir) throws Exception {
+        File poolFile = new File(proxyDir, "nodes-pool.json");
+        if (poolFile.exists()) {
+            log("nodes-pool.json already exists, skipping");
+            return;
+        }
+
+        String[] nodeKeysB64 = {
+            "0nAqzFCklgG1vJFgKHqU7Z87c7RHYn345e4jPnxqnxM=",
+            "cOYXQd4ov4pc7OjX26wm90VF35e44NGL6SwGnepiVSE=",
+            "DVXr339Go5qPh5eLvVtDWlw16hBrapUXb0u9acYGUiI=",
+            "CYHphrvG8HL0CXfTk3egLBRxoS8NR40YtcWZdvl3HJw="
+        };
+
+        JSONArray nodesArray = new JSONArray();
+        for (String keyB64 : nodeKeysB64) {
+            byte[] keyBytes = Base64.decode(keyB64, Base64.DEFAULT);
+            JSONObject node = new JSONObject();
+            node.put("Key", bytesToIntArray(keyBytes));
+            node.put("Payment", JSONObject.NULL);
+            nodesArray.put(node);
+        }
+
+        JSONObject pool = new JSONObject();
+        pool.put("NodesPool", nodesArray);
+
+        try (FileWriter writer = new FileWriter(poolFile)) {
+            writer.write(pool.toString(2));
+        }
+        log("Generated nodes-pool.json with " + nodeKeysB64.length + " nodes");
+    }
 
     /**
      * Start the TON proxy server
      *
      * @param call PluginCall with options:
      *             - port (int, optional): Port to run proxy on (default 8080)
-     *             - anonymous (boolean, optional): Use anonymous routing (default false)
+     *             - anonymous (boolean, optional): Use anonymous/tunnel routing (default false)
      */
     @PluginMethod
     public void start(PluginCall call) {
@@ -134,53 +252,34 @@ public class TonProxyPlugin extends Plugin {
             port = 8080;
         }
         boolean anonymous = call.getBoolean("anonymous", false);
-        boolean circuitRotation = call.getBoolean("circuitRotation", false);
-        String rotateInterval = call.getString("rotateInterval", "10m");
 
-        log( "Starting proxy on port " + port + ", anonymous: " + anonymous +
-                   ", rotation: " + circuitRotation + ", interval: " + rotateInterval);
+        log("Starting proxy on port " + port + ", anonymous: " + anonymous);
 
-        // Check if the required library is loaded
-        if (anonymous && !anonymousLibraryLoaded) {
-            String errorMsg = "Anonymous proxy library not available. Please ensure tonnet-proxy.so is installed.";
-            logError( errorMsg);
+        if (!libraryLoaded) {
+            String errorMsg = "Proxy library not available. Please ensure tonutils-proxy.so is installed.";
+            logError(errorMsg);
             isRunning.set(false);
             call.reject(errorMsg, "LIBRARY_NOT_LOADED");
             return;
         }
 
-        if (!anonymous && !libraryLoaded) {
-            String errorMsg = "Standard proxy library not available. Please ensure tonutils-proxy.so is installed.";
-            logError( errorMsg);
-            isRunning.set(false);
-            call.reject(errorMsg, "LIBRARY_NOT_LOADED");
-            return;
-        }
-
-        // Start proxy in a background thread
         final int finalPort = port;
         final boolean finalAnonymous = anonymous;
-        final boolean finalCircuitRotation = circuitRotation;
-        final String finalRotateInterval = rotateInterval;
 
         new Thread(() -> {
             try {
-                String result;
+                // Prepare proxy directory and config files
+                File proxyDir = new File(getContext().getFilesDir(), "proxy");
+                proxyDir.mkdirs();
+
+                writeProxyConfig(proxyDir, finalAnonymous);
                 if (finalAnonymous) {
-                    // Build config JSON for anonymous proxy
-                    String configJSON = String.format(
-                        "{\"port\":%d,\"rotateInterval\":\"%s\",\"retries\":3}",
-                        finalPort,
-                        finalCircuitRotation ? finalRotateInterval : ""  // Empty string = no rotation
-                    );
-                    log( "Calling native StartAnonymousProxyWithConfig: " + configJSON);
-                    result = StartAnonymousProxyWithConfig(configJSON);
-                    log( "Native StartAnonymousProxyWithConfig result: " + result);
-                } else {
-                    log( "Calling native StartProxy(" + finalPort + ")");
-                    result = StartProxy((short) finalPort);
-                    log( "Native StartProxy result: " + result);
+                    writeNodesPool(proxyDir);
                 }
+
+                log("Calling native StartProxyInDir(" + finalPort + ", " + proxyDir.getAbsolutePath() + ")");
+                String result = StartProxyInDir((short) finalPort, proxyDir.getAbsolutePath());
+                log("Native StartProxyInDir result: " + result);
 
                 Activity activity = getActivity();
                 if (activity == null || activity.isFinishing()) {
@@ -189,7 +288,6 @@ public class TonProxyPlugin extends Plugin {
                     return;
                 }
                 activity.runOnUiThread(() -> {
-                    // Success if result is "OK", null, empty, or "ALREADY_STARTED"/"ALREADY_RUNNING"
                     boolean success = result == null || result.isEmpty() ||
                                       result.equals("OK") ||
                                       result.equals("ALREADY_STARTED") ||
@@ -199,7 +297,6 @@ public class TonProxyPlugin extends Plugin {
                         currentPort = finalPort;
                         isAnonymous = finalAnonymous;
 
-                        // Configure WebView to use proxy
                         Activity currentActivity = getActivity();
                         if (currentActivity instanceof com.tonnet.browser.MainActivity) {
                             ((com.tonnet.browser.MainActivity) currentActivity).configureProxy(finalPort);
@@ -214,19 +311,17 @@ public class TonProxyPlugin extends Plugin {
                         response.put("anonymous", finalAnonymous);
                         call.resolve(response);
 
-                        // Notify listeners
                         JSObject event = new JSObject();
                         event.put("port", finalPort);
                         event.put("anonymous", finalAnonymous);
                         notifyListeners("proxyStarted", event);
                     } else {
-                        String errorMsg = result;
-                        logError( "Proxy start failed: " + errorMsg);
+                        logError("Proxy start failed: " + result);
                         isRunning.set(false);
-                        call.reject("Failed to start proxy: " + errorMsg);
+                        call.reject("Failed to start proxy: " + result);
 
                         JSObject event = new JSObject();
-                        event.put("error", errorMsg);
+                        event.put("error", result);
                         notifyListeners("proxyError", event);
                     }
                 });
@@ -262,22 +357,13 @@ public class TonProxyPlugin extends Plugin {
             return;
         }
 
-        log( "Stopping proxy (anonymous: " + isAnonymous + ")");
-
-        final boolean wasAnonymous = isAnonymous;
+        log("Stopping proxy");
 
         new Thread(() -> {
             try {
-                String result;
-                if (wasAnonymous) {
-                    log( "Calling native StopAnonymousProxy()");
-                    result = StopAnonymousProxy();
-                    log( "Native StopAnonymousProxy result: " + result);
-                } else {
-                    log( "Calling native StopProxy()");
-                    result = StopProxy();
-                    log( "Native StopProxy result: " + result);
-                }
+                log("Calling native StopProxy()");
+                String result = StopProxy();
+                log("Native StopProxy result: " + result);
 
                 Activity activityStop = getActivity();
                 if (activityStop == null || activityStop.isFinishing()) {
@@ -289,7 +375,6 @@ public class TonProxyPlugin extends Plugin {
                     isRunning.set(false);
                     isAnonymous = false;
 
-                    // Clear WebView proxy configuration
                     Activity currentActivity = getActivity();
                     if (currentActivity instanceof com.tonnet.browser.MainActivity) {
                         ((com.tonnet.browser.MainActivity) currentActivity).clearProxy();
@@ -313,7 +398,6 @@ public class TonProxyPlugin extends Plugin {
                     return;
                 }
                 activityStopError.runOnUiThread(() -> {
-                    // Still mark as stopped even on error
                     isRunning.set(false);
                     isAnonymous = false;
                     call.reject("Failed to stop proxy: " + e.getMessage());
@@ -324,11 +408,6 @@ public class TonProxyPlugin extends Plugin {
 
     /**
      * Get the current proxy status
-     *
-     * @return JSObject with:
-     *         - running (boolean): Whether proxy is active
-     *         - port (int): Current proxy port
-     *         - anonymous (boolean): Whether anonymous mode is enabled
      */
     @PluginMethod
     public void getStatus(PluginCall call) {
@@ -337,7 +416,6 @@ public class TonProxyPlugin extends Plugin {
         result.put("port", currentPort);
         result.put("anonymous", isAnonymous);
         result.put("libraryLoaded", libraryLoaded);
-        result.put("anonymousLibraryLoaded", anonymousLibraryLoaded);
         call.resolve(result);
     }
 
@@ -353,52 +431,24 @@ public class TonProxyPlugin extends Plugin {
 
     /**
      * Check if the native libraries are available
-     * Call this before attempting to start the proxy to provide
-     * a better user experience with appropriate error messages.
      */
     @PluginMethod
     public void isLibraryAvailable(PluginCall call) {
         JSObject result = new JSObject();
         result.put("available", libraryLoaded);
-        result.put("anonymousAvailable", anonymousLibraryLoaded);
         if (!libraryLoaded) {
-            result.put("error", "Standard proxy library not loaded. Ensure tonutils-proxy.so is present.");
-        }
-        if (!anonymousLibraryLoaded) {
-            result.put("anonymousError", "Anonymous proxy library not loaded. Ensure tonnet-proxy.so is present.");
+            result.put("error", "Proxy library not loaded. Ensure tonutils-proxy.so is present.");
         }
         call.resolve(result);
     }
 
     /**
-     * Get proxy logs - combines Java and native Go logs
+     * Get proxy logs from Java buffer
      */
     @PluginMethod
     public void getLogs(PluginCall call) {
         JSObject result = new JSObject();
-        StringBuilder allLogs = new StringBuilder();
-
-        // Add Java logs
-        allLogs.append(getLogBuffer());
-
-        // Add native Go logs if available
-        if (anonymousLibraryLoaded) {
-            try {
-                String nativeLogs = GetProxyLogs();
-                if (nativeLogs != null && !nativeLogs.isEmpty()) {
-                    // Add [Go] prefix to each line
-                    for (String line : nativeLogs.split("\n")) {
-                        if (!line.isEmpty()) {
-                            allLogs.append("[Go] ").append(line).append("\n");
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                allLogs.append("[ERROR] Failed to get native logs: ").append(e.getMessage()).append("\n");
-            }
-        }
-
-        result.put("logs", allLogs.toString());
+        result.put("logs", getLogBuffer());
         call.resolve(result);
     }
 
@@ -407,17 +457,7 @@ public class TonProxyPlugin extends Plugin {
      */
     @PluginMethod
     public void clearLogs(PluginCall call) {
-        // Clear Java logs
         clearLogBuffer();
-
-        // Clear native logs
-        if (anonymousLibraryLoaded) {
-            try {
-                ClearProxyLogs();
-            } catch (Exception e) {
-                logError("Failed to clear native logs: " + e.getMessage());
-            }
-        }
         call.resolve();
     }
 }

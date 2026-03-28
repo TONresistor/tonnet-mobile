@@ -4,15 +4,15 @@
  */
 
 import { useState, useEffect } from 'react'
+import { Loader2 } from 'lucide-react'
 import { useProxy } from '@/hooks/useProxy'
 import { platform } from '@/platform'
 import { useSettingsStore } from '@/stores/settings'
 import welcomeGif from '@/assets/welcome.gif'
-import welcomeYellowGif from '@/assets/welcome-yellow.gif'
 import loadingGif from '@/assets/loading.gif'
-import loadingYellowGif from '@/assets/loading-yellow.gif'
 import { APP_VERSION } from '@shared/constants'
 import { usePreferences } from '@/stores/preferences'
+import { normalizeUrl } from '@/lib/url'
 
 const CONNECTION_STEPS = [
   'Starting proxy...',
@@ -25,16 +25,12 @@ export function LandingPage() {
   const { navigate } = useSettingsStore()
   const [currentStep, setCurrentStep] = useState(-1)
   const [stepMessage, setStepMessage] = useState('')
-  const { theme, homepage } = usePreferences()
-  const isYellow = theme === 'utya-duck'
-
-  const currentWelcomeGif = isYellow ? welcomeYellowGif : welcomeGif
-  const currentLoadingGif = isYellow ? loadingYellowGif : loadingGif
+  const { homepage } = usePreferences()
 
   // Navigate to homepage when connected
   useEffect(() => {
     if (isConnected) {
-      navigate(homepage)
+      navigate(normalizeUrl(homepage))
     }
   }, [isConnected, navigate, homepage])
 
@@ -64,7 +60,7 @@ export function LandingPage() {
     <div className="relative flex flex-col items-center justify-center h-full w-full bg-background-secondary">
       {/* Logo - switches between welcome and loading gif */}
       <img
-        src={isConnecting ? currentLoadingGif : currentWelcomeGif}
+        src={isConnecting ? loadingGif : welcomeGif}
         alt="TON"
         className="w-[200px] h-[200px] mb-8 transition-opacity duration-300"
       />
@@ -78,7 +74,7 @@ export function LandingPage() {
         onClick={() => connect()}
         disabled={isConnecting}
         className={`
-          relative text-primary-foreground text-xl font-medium px-16 py-5 rounded-xl min-w-[340px]
+          relative text-primary-foreground text-xl font-medium px-16 py-5 rounded-full min-w-[340px]
           transition-all duration-300 transform
           ${isConnecting
             ? 'gradient-primary opacity-80 cursor-not-allowed'
@@ -89,7 +85,7 @@ export function LandingPage() {
       >
         {isConnecting ? (
           <div className="flex items-center justify-center gap-3">
-            <div className="w-6 h-6 border-2 border-primary-foreground/20 border-t-primary-foreground rounded-full animate-spin" />
+            <Loader2 className="w-6 h-6 text-primary-foreground animate-spin" />
             <span>{stepMessage || 'Connecting...'}</span>
           </div>
         ) : (
@@ -98,7 +94,7 @@ export function LandingPage() {
       </button>
 
       {/* Progress Section */}
-      <div className={`mt-8 w-[340px] transition-opacity duration-300 ${isConnecting ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`mt-8 w-[340px] transition-opacity duration-300 ${(isConnecting || error) ? 'opacity-100' : 'opacity-0'}`}>
         {/* Progress Bar */}
         <div className="h-1.5 bg-foreground/10 rounded-full overflow-hidden mb-4">
           <div

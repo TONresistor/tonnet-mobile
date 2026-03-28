@@ -16,11 +16,9 @@ export interface AppPreferences {
   proxyPort: number
   autoConnect: boolean
   anonymousMode: boolean
-  circuitRotation: boolean
-  rotateInterval: string
 
   // Appearance
-  theme: 'resistance-dog' | 'utya-duck'
+  theme: 'resistance-dog'
 
   // Privacy
   clearOnExit: boolean
@@ -35,8 +33,6 @@ export const defaultPreferences: AppPreferences = {
   proxyPort: 8080,
   autoConnect: false,
   anonymousMode: false,
-  circuitRotation: false,
-  rotateInterval: '10m',
 
   // Appearance
   theme: 'resistance-dog',

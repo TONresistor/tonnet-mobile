@@ -1,51 +1,22 @@
 /**
- * JNI Bridge for tonutils-proxy and tonnet-proxy (anonymous)
+ * JNI Bridge for tonutils-proxy
  *
  * This file provides JNI-compatible function names that call
- * the CGO-exported functions from libtonutils-proxy.so and libtonnet-proxy.so
+ * the CGO-exported functions from libtonutils-proxy.so.
+ *
+ * tonutils-proxy reads config.json from CWD. Use StartProxyInDir
+ * to chdir() to the directory containing the generated config.json
+ * before starting the proxy (handles both direct and anonymous mode).
  */
 
 #include <jni.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 // Forward declarations of CGO-exported functions from libtonutils-proxy.so
 extern char* StartProxy(unsigned short port);
 extern char* StopProxy(void);
-
-// Forward declarations of CGO-exported functions from libtonnet-proxy.so
-extern char* StartAnonymousProxy(unsigned short port);
-extern char* StartAnonymousProxyWithConfig(char* configJSON);
-extern char* StopAnonymousProxy(void);
-extern char* GetAnonymousProxyStatus(void);
-extern char* GetProxyLogs(void);
-extern void ClearProxyLogs(void);
-
-// ============================================================================
-// Standard Proxy (tonutils-proxy)
-// ============================================================================
-
-/**
- * JNI wrapper for StartProxy
- *
- * Java signature: private static native String StartProxy(short port);
- */
-JNIEXPORT jstring JNICALL
-Java_com_tonnet_browser_plugins_TonProxyPlugin_StartProxy(
-    JNIEnv *env,
-    jclass clazz,
-    jshort port
-) {
-    char* result = StartProxy((unsigned short)port);
-    jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
-
-    // Free CGO-allocated memory to prevent leak
-    if (result != NULL) {
-        free(result);
-    }
-
-    return jresult;
-}
 
 /**
  * JNI wrapper for StopProxy
@@ -60,33 +31,6 @@ Java_com_tonnet_browser_plugins_TonProxyPlugin_StopProxy(
     char* result = StopProxy();
     jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
 
-    // Free CGO-allocated memory to prevent leak
-    if (result != NULL) {
-        free(result);
-    }
-
-    return jresult;
-}
-
-// ============================================================================
-// Anonymous Proxy (tonnet-proxy)
-// ============================================================================
-
-/**
- * JNI wrapper for StartAnonymousProxy
- *
- * Java signature: private static native String StartAnonymousProxy(short port);
- */
-JNIEXPORT jstring JNICALL
-Java_com_tonnet_browser_plugins_TonProxyPlugin_StartAnonymousProxy(
-    JNIEnv *env,
-    jclass clazz,
-    jshort port
-) {
-    char* result = StartAnonymousProxy((unsigned short)port);
-    jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
-
-    // Free CGO-allocated memory to prevent leak
     if (result != NULL) {
         free(result);
     }
@@ -95,114 +39,42 @@ Java_com_tonnet_browser_plugins_TonProxyPlugin_StartAnonymousProxy(
 }
 
 /**
- * JNI wrapper for StartAnonymousProxyWithConfig
+ * JNI wrapper that chdir()s to dirPath before calling StartProxy(port).
+ * tonutils-proxy reads config.json from CWD, so placing the generated
+ * config.json in dirPath allows the same binary to handle both direct
+ * and anonymous mode (via TunnelSectionsNum in config.json).
  *
- * Java signature: private static native String StartAnonymousProxyWithConfig(String configJSON);
+ * Java signature: private static native String StartProxyInDir(short port, String dirPath);
  */
 JNIEXPORT jstring JNICALL
-Java_com_tonnet_browser_plugins_TonProxyPlugin_StartAnonymousProxyWithConfig(
+Java_com_tonnet_browser_plugins_TonProxyPlugin_StartProxyInDir(
     JNIEnv *env,
     jclass clazz,
-    jstring configJSON
+    jshort port,
+    jstring dirPath
 ) {
-    if (configJSON == NULL) {
-        return (*env)->NewStringUTF(env, "ERROR: null config");
+    if (dirPath == NULL) {
+        return (*env)->NewStringUTF(env, "ERROR: null dirPath");
     }
-    const char* configStr = (*env)->GetStringUTFChars(env, configJSON, NULL);
-    if (configStr == NULL) {
+
+    const char* dirStr = (*env)->GetStringUTFChars(env, dirPath, NULL);
+    if (dirStr == NULL) {
         return (*env)->NewStringUTF(env, "ERROR: GetStringUTFChars failed");
     }
-    char* configCopy = strdup(configStr);
-    (*env)->ReleaseStringUTFChars(env, configJSON, configStr);
-    if (configCopy == NULL) {
-        return (*env)->NewStringUTF(env, "ERROR: OOM");
+
+    int rc = chdir(dirStr);
+    (*env)->ReleaseStringUTFChars(env, dirPath, dirStr);
+
+    if (rc != 0) {
+        return (*env)->NewStringUTF(env, "ERROR: chdir failed");
     }
 
-    char* result = StartAnonymousProxyWithConfig(configCopy);
-    free(configCopy);
-
+    char* result = StartProxy((unsigned short)port);
     jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
 
-    // Free CGO-allocated memory to prevent leak
     if (result != NULL) {
         free(result);
     }
 
     return jresult;
-}
-
-/**
- * JNI wrapper for StopAnonymousProxy
- *
- * Java signature: private static native String StopAnonymousProxy();
- */
-JNIEXPORT jstring JNICALL
-Java_com_tonnet_browser_plugins_TonProxyPlugin_StopAnonymousProxy(
-    JNIEnv *env,
-    jclass clazz
-) {
-    char* result = StopAnonymousProxy();
-    jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
-
-    // Free CGO-allocated memory to prevent leak
-    if (result != NULL) {
-        free(result);
-    }
-
-    return jresult;
-}
-
-/**
- * JNI wrapper for GetAnonymousProxyStatus
- *
- * Java signature: private static native String GetAnonymousProxyStatus();
- */
-JNIEXPORT jstring JNICALL
-Java_com_tonnet_browser_plugins_TonProxyPlugin_GetAnonymousProxyStatus(
-    JNIEnv *env,
-    jclass clazz
-) {
-    char* result = GetAnonymousProxyStatus();
-    jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
-
-    // Free CGO-allocated memory to prevent leak
-    if (result != NULL) {
-        free(result);
-    }
-
-    return jresult;
-}
-
-/**
- * JNI wrapper for GetProxyLogs
- *
- * Java signature: private static native String GetProxyLogs();
- */
-JNIEXPORT jstring JNICALL
-Java_com_tonnet_browser_plugins_TonProxyPlugin_GetProxyLogs(
-    JNIEnv *env,
-    jclass clazz
-) {
-    char* result = GetProxyLogs();
-    jstring jresult = (*env)->NewStringUTF(env, result ? result : "");
-
-    // Free CGO-allocated memory to prevent leak
-    if (result != NULL) {
-        free(result);
-    }
-
-    return jresult;
-}
-
-/**
- * JNI wrapper for ClearProxyLogs
- *
- * Java signature: private static native void ClearProxyLogs();
- */
-JNIEXPORT void JNICALL
-Java_com_tonnet_browser_plugins_TonProxyPlugin_ClearProxyLogs(
-    JNIEnv *env,
-    jclass clazz
-) {
-    ClearProxyLogs();
 }

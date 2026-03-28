@@ -28,10 +28,10 @@ describe('Preferences Store', () => {
     it('should update draft value', () => {
       const { setDraft } = usePreferencesStore.getState()
 
-      setDraft('theme', 'utya-duck')
+      setDraft('autoConnect', true)
 
       const state = usePreferencesStore.getState()
-      expect(state.draft.theme).toBe('utya-duck')
+      expect(state.draft.autoConnect).toBe(true)
     })
 
     it('should set hasChanges to true when draft differs from preferences', () => {
@@ -101,7 +101,7 @@ describe('Preferences Store', () => {
     it('should set isSaving during save', async () => {
       const { setDraft, save } = usePreferencesStore.getState()
 
-      setDraft('theme', 'utya-duck')
+      setDraft('proxyPort', 9090)
 
       const savePromise = save()
 
@@ -109,16 +109,6 @@ describe('Preferences Store', () => {
       await savePromise
 
       expect(usePreferencesStore.getState().isSaving).toBe(false)
-    })
-
-    it('should apply theme change to document', async () => {
-      const { setDraft, save } = usePreferencesStore.getState()
-      const setAttributeSpy = vi.spyOn(document.documentElement, 'setAttribute')
-
-      setDraft('theme', 'utya-duck')
-      await save()
-
-      expect(setAttributeSpy).toHaveBeenCalledWith('data-theme', 'utya-duck')
     })
   })
 
@@ -153,7 +143,6 @@ describe('Preferences Store', () => {
       const { setDraft, save, resetToDefaults } = usePreferencesStore.getState()
 
       // First, change and save some preferences
-      setDraft('theme', 'utya-duck')
       setDraft('proxyPort', 9000)
       setDraft('anonymousMode', true)
       await save()
