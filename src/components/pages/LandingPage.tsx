@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { Loader2 } from 'lucide-react'
 import { useProxy } from '@/hooks/useProxy'
 import { platform } from '@/platform'
 import { useSettingsStore } from '@/stores/settings'
@@ -73,7 +74,7 @@ export function LandingPage() {
         onClick={() => connect()}
         disabled={isConnecting}
         className={`
-          relative text-primary-foreground text-xl font-medium px-16 py-5 rounded-xl min-w-[340px]
+          relative text-primary-foreground text-xl font-medium px-16 py-5 rounded-full min-w-[340px]
           transition-all duration-300 transform
           ${isConnecting
             ? 'gradient-primary opacity-80 cursor-not-allowed'
@@ -84,7 +85,7 @@ export function LandingPage() {
       >
         {isConnecting ? (
           <div className="flex items-center justify-center gap-3">
-            <div className="w-6 h-6 border-2 border-primary-foreground/20 border-t-primary-foreground rounded-full animate-spin" />
+            <Loader2 className="w-6 h-6 text-primary-foreground animate-spin" />
             <span>{stepMessage || 'Connecting...'}</span>
           </div>
         ) : (

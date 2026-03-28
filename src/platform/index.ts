@@ -101,7 +101,7 @@ const proxyApi = {
 
     if (isAndroid) {
       // Emit progress events for UI feedback
-      emitEvent('proxy:progress', { step: 0, message: 'Starting proxy...' })
+      emitEvent('proxy:progress', { step: 0, message: anonymous ? 'Initializing tunnel...' : 'Starting proxy...' })
 
       try {
         let timedOut = false
