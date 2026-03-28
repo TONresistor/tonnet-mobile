@@ -18,6 +18,7 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -148,11 +149,18 @@ public class PrivacyWebViewClient extends BridgeWebViewClient {
             connection.setReadTimeout(60000);
             connection.setUseCaches(false);
 
-            // Copy headers from original request
+            // Copy headers from original request, stripping privacy-sensitive ones
             Map<String, String> headers = request.getRequestHeaders();
+            Set<String> stripHeaders = new HashSet<>(Arrays.asList("referer", "origin"));
             for (Map.Entry<String, String> entry : headers.entrySet()) {
-                connection.setRequestProperty(entry.getKey(), entry.getValue());
+                if (!stripHeaders.contains(entry.getKey().toLowerCase())) {
+                    connection.setRequestProperty(entry.getKey(), entry.getValue());
+                }
             }
+
+            // Inject privacy headers
+            connection.setRequestProperty("DNT", "1");
+            connection.setRequestProperty("Sec-GPC", "1");
 
             // Execute request
             long t1 = System.currentTimeMillis();

@@ -55,6 +55,15 @@ public class MainActivity extends BridgeActivity {
             settings.setCacheMode(WebSettings.LOAD_DEFAULT);
             settings.setTextZoom(100);
 
+            // Block access to content:// URIs (prevents leaking local provider data)
+            settings.setAllowContentAccess(false);
+
+            // Require user gesture to start media playback
+            settings.setMediaPlaybackRequiresUserGesture(true);
+
+            // Block third-party cookies
+            android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
+
             if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
                 WebSettingsCompat.setAlgorithmicDarkeningAllowed(settings, true);
             }
@@ -103,5 +112,13 @@ public class MainActivity extends BridgeActivity {
             command -> command.run(),
             () -> {}
         );
+    }
+
+    public void clearBrowsingDataNative() {
+        android.webkit.WebView webView = getBridge().getWebView();
+        webView.clearCache(true);
+        webView.clearHistory();
+        android.webkit.CookieManager.getInstance().removeAllCookies(null);
+        android.webkit.WebStorage.getInstance().deleteAllData();
     }
 }

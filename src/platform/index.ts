@@ -273,9 +273,12 @@ async function clearBrowsingData(options: ClearBrowsingDataOptions = {}): Promis
       await Promise.all(cacheNames.map((name) => window.caches.delete(name)))
     }
 
-    // Cookies and history require native implementation on Android
     if (isAndroid && (cookies || history)) {
-      console.info('Cookie and history clearing requires native Android implementation')
+      try {
+        await (TonProxy as any).clearBrowsingData()
+      } catch (e) {
+        console.warn('Native clear failed:', e)
+      }
     }
   } catch (error) {
     console.error('Failed to clear browsing data:', error)
