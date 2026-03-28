@@ -65,7 +65,7 @@ public class MainActivity extends BridgeActivity {
             android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
 
             if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
-                WebSettingsCompat.setAlgorithmicDarkeningAllowed(settings, true);
+                WebSettingsCompat.setAlgorithmicDarkeningAllowed(settings, false);
             }
 
             // Apply privacy WebViewClient with tracker blocking

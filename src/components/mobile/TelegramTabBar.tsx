@@ -112,14 +112,14 @@ function TabButton({
     >
       <div className={cn(
         'transition-colors',
-        active ? 'text-primary' : disabled ? 'text-muted-foreground' : 'text-muted-foreground'
+        active ? 'text-primary' : disabled ? 'text-white/30' : 'text-white'
       )}>
         {icon}
       </div>
       <span className={cn(
         'text-[10px] leading-[12px] tracking-tight',
-        active ? 'font-bold text-primary' : 'font-medium text-muted-foreground',
-        disabled && 'text-muted-foreground'
+        active ? 'font-bold text-primary' : 'font-medium text-white',
+        disabled && 'text-white/30'
       )}>
         {label}
       </span>

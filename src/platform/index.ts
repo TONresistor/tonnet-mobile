@@ -229,7 +229,7 @@ function on<T extends PlatformEventType>(
 // ============================================================================
 
 // Keys to preserve when clearing localStorage (app data, not browsing data)
-const PRESERVE_STORAGE_KEYS = ['tonnet-preferences', 'tonnet-bookmarks', 'tonnet-settings']
+const PRESERVE_STORAGE_KEYS = ['tonnet-preferences', 'tonnet-bookmarks']
 
 async function clearBrowsingData(options: ClearBrowsingDataOptions = {}): Promise<void> {
   const {
