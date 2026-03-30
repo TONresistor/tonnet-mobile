@@ -8,6 +8,7 @@ import { Globe, Home, Settings } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { BottomSheet } from './BottomSheet'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 interface Tab {
   id: string
@@ -133,6 +134,7 @@ export function TabsSheet({
   onSwitchTab,
   onCloseTab,
 }: TabsSheetProps) {
+  const { t } = useTranslation('common')
   const handleSwitch = (tabId: string) => {
     onSwitchTab(tabId)
     onClose()
@@ -149,7 +151,7 @@ export function TabsSheet({
     <BottomSheet
       open={open}
       onClose={onClose}
-      title={`Tabs (${tabs.length})`}
+      title={t('tabs_count', { count: tabs.length })}
       maxHeight="60vh"
     >
       <div className="space-y-2">

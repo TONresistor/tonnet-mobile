@@ -1,0 +1,10 @@
+{
+  "title": "TON Browser",
+  "subtitle": "Досліджуйте децентралізовану мережу TON.",
+  "connect_button": "Підключитися до мережі TON",
+  "connecting": "Підключення...",
+  "step_starting": "Запуск проксі...",
+  "step_syncing": "Синхронізація з мережею...",
+  "step_connected": "Підключено!",
+  "footer": "Peer-to-peer · Без цензури · Без відстеження"
+}

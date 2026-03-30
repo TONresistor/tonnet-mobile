@@ -1,0 +1,10 @@
+{
+  "title": "TON Browser",
+  "subtitle": "Explora la red TON descentralizada.",
+  "connect_button": "Conectar a la red TON",
+  "connecting": "Conectando...",
+  "step_starting": "Iniciando proxy...",
+  "step_syncing": "Sincronizando con la red...",
+  "step_connected": "¡Conectado!",
+  "footer": "Entre pares - Resistente a la censura - Sin rastreo"
+}

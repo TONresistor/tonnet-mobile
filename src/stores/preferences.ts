@@ -11,6 +11,7 @@ import { persist } from 'zustand/middleware'
 export interface AppPreferences {
   // General
   homepage: string
+  language: string
 
   // Network
   proxyPort: number
@@ -30,6 +31,7 @@ export interface AppPreferences {
 export const defaultPreferences: AppPreferences = {
   // General
   homepage: 'ton://start',
+  language: 'en',
 
   // Network
   proxyPort: 8080,

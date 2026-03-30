@@ -1,0 +1,10 @@
+{
+  "title": "TON 브라우저",
+  "subtitle": "분산형 TON 네트워크를 탐색하세요.",
+  "connect_button": "TON 네트워크 연결",
+  "connecting": "연결 중...",
+  "step_starting": "프록시 시작 중...",
+  "step_syncing": "네트워크 동기화 중...",
+  "step_connected": "연결됨!",
+  "footer": "P2P - 검열 방지 - 추적 없음"
+}

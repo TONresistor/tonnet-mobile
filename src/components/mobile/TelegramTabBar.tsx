@@ -5,6 +5,7 @@
 
 import { ChevronLeft, ChevronRight, Plus, Layers, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 interface TelegramTabBarProps {
   canGoBack: boolean
@@ -29,6 +30,7 @@ export function TelegramTabBar({
   onOpenTabs,
   onSettings,
 }: TelegramTabBarProps) {
+  const { t } = useTranslation('common')
   const isSettings = activeView === 'settings'
 
   return (
@@ -50,18 +52,18 @@ export function TelegramTabBar({
           onClick={onBack}
           disabled={!canGoBack}
           icon={<ChevronLeft className="h-[22px] w-[22px]" strokeWidth={2.5} />}
-          label="Back"
+          label={t('back')}
         />
         <TabButton
           onClick={onForward}
           disabled={!canGoForward}
           icon={<ChevronRight className="h-[22px] w-[22px]" strokeWidth={2.5} />}
-          label="Forward"
+          label={t('forward')}
         />
         <TabButton
           onClick={onNewTab}
           icon={<Plus className="h-[22px] w-[22px]" strokeWidth={2.5} />}
-          label="New"
+          label={t('new_tab')}
         />
         <TabButton
           onClick={onOpenTabs}
@@ -73,12 +75,12 @@ export function TelegramTabBar({
               </span>
             </div>
           }
-          label="Tabs"
+          label={t('tabs')}
         />
         <TabButton
           onClick={onSettings}
           icon={<Settings className="h-[22px] w-[22px]" strokeWidth={2} />}
-          label="Settings"
+          label={t('settings')}
           active={isSettings}
         />
       </div>

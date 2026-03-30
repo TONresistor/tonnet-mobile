@@ -9,8 +9,11 @@ import tonIcon from '@/assets/ton.png'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useSettingsStore } from '@/stores/settings'
 import { normalizeUrl } from '@/lib/url'
+import { useTranslation } from 'react-i18next'
 
 export function StartPage() {
+  const { t } = useTranslation('browser')
+  const { t: tc } = useTranslation('common')
   const [searchInput, setSearchInput] = useState('')
   const isMobile = useIsMobile()
   const { navigate } = useSettingsStore()
@@ -34,7 +37,7 @@ export function StartPage() {
         />
 
         <p className={`text-muted-foreground text-center mb-8 ${isMobile ? 'text-base px-4' : 'text-xl'}`}>
-          Explore the decentralized TON Network
+          {t('explore_subtitle')}
         </p>
 
         {/* Search Form */}
@@ -48,13 +51,13 @@ export function StartPage() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className={`flex-1 bg-transparent border-none text-foreground outline-none placeholder:text-muted-foreground/50 ${isMobile ? 'text-base py-3 pr-2' : 'text-lg py-4 pr-5'}`}
-              placeholder="Enter a .ton address"
+              placeholder={t('search_placeholder')}
             />
             <button
               type="submit"
               className={`bg-primary text-primary-foreground rounded-full font-medium active:bg-accent transition-colors ${isMobile ? 'px-5 py-3 text-sm' : 'px-8 py-4 text-base'}`}
             >
-              Go
+              {tc('go')}
             </button>
           </div>
         </form>

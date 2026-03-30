@@ -1,0 +1,10 @@
+{
+  "title": "TON Tarayıcı",
+  "subtitle": "Merkeziyetsiz TON Ağını keşfedin.",
+  "connect_button": "TON Ağına Bağlan",
+  "connecting": "Bağlanıyor...",
+  "step_starting": "Proxy başlatılıyor...",
+  "step_syncing": "Ağla senkronize ediliyor...",
+  "step_connected": "Bağlandı!",
+  "footer": "Eşten Eşe - Sansürsüz - İzleme Yok"
+}

@@ -1,0 +1,21 @@
+{
+  "save": "Save",
+  "cancel": "Cancel",
+  "go": "Go",
+  "loading": "Loading...",
+  "back": "Back",
+  "forward": "Forward",
+  "new_tab": "New",
+  "tabs": "Tabs",
+  "refresh": "Refresh",
+  "settings": "Settings",
+  "bookmarks": "Bookmarks",
+  "no_bookmarks": "No bookmarks yet",
+  "no_bookmarks_hint": "Tap the star icon to add one",
+  "title": "Title",
+  "url": "URL",
+  "go_home": "Go home",
+  "open_bookmarks": "Open bookmarks",
+  "enter_ton_address": "Enter .ton address or URL",
+  "tabs_count": "Tabs ({{count}})"
+}

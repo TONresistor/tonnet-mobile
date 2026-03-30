@@ -1,0 +1,21 @@
+{
+  "save": "Зберегти",
+  "cancel": "Скасувати",
+  "go": "Перейти",
+  "loading": "Завантаження...",
+  "back": "Назад",
+  "forward": "Вперед",
+  "new_tab": "Нова",
+  "tabs": "Вкладки",
+  "refresh": "Оновити",
+  "settings": "Налаштування",
+  "bookmarks": "Закладки",
+  "no_bookmarks": "Закладок ще немає",
+  "no_bookmarks_hint": "Натисніть на зірочку, щоб додати",
+  "title": "Назва",
+  "url": "URL",
+  "go_home": "На головну",
+  "open_bookmarks": "Відкрити закладки",
+  "enter_ton_address": "Введіть .ton адресу або URL",
+  "tabs_count": "Вкладки ({{count}})"
+}

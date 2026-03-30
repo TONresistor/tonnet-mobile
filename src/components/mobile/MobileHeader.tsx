@@ -4,7 +4,16 @@
  */
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Home, X, RefreshCw, Star, Bookmark } from 'lucide-react'
+import { X, RefreshCw, Star, Bookmark } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+
+function HomeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 22 19" fill="none">
+      <path fillRule="evenodd" clipRule="evenodd" d="M10.9996 2.58541L18.4349 9.88078V18.0881C18.4349 18.5903 18.0174 19 17.5055 19H14.2525C13.9948 19 13.7878 18.797 13.7878 18.544V13.0725C13.7878 12.8196 13.5809 12.6165 13.3231 12.6165H8.67611C8.41834 12.6165 8.21141 12.8196 8.21141 13.0725V18.544C8.21141 18.797 8.00447 19 7.7467 19H4.49378C3.98189 19 3.56438 18.5903 3.56438 18.0881V9.88078L10.9996 2.58541ZM11.468 0.155991L11.5478 0.223672L16.5761 5.15375V2.12945C16.5761 1.87653 16.783 1.67349 17.0408 1.67349H17.9702C18.2279 1.67349 18.4349 1.87653 18.4349 2.12945V6.97759L21.7713 10.2548C22.0762 10.5505 22.0762 11.0349 21.7713 11.3306C21.4954 11.6049 21.0597 11.6263 20.7547 11.3983L20.6749 11.3306L10.9996 1.83735L1.32437 11.3306C1.04845 11.6049 0.612792 11.6263 0.307831 11.3983L0.22796 11.3306C-0.0515871 11.0599 -0.0733696 10.6324 0.158982 10.3332L0.22796 10.2548L10.4514 0.223672C10.7273 -0.050617 11.163 -0.0719892 11.468 0.155991Z" fill="currentColor" />
+    </svg>
+  )
+}
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settings'
@@ -51,6 +60,7 @@ export function MobileHeader({
   onOpenBookmarks,
   isLoading = false,
 }: MobileHeaderProps) {
+  const { t } = useTranslation('common')
   const [inputValue, setInputValue] = useState(url)
   const [isFocused, setIsFocused] = useState(false)
   const lastSubmitTime = useRef(0)
@@ -117,9 +127,9 @@ export function MobileHeader({
         <button
           onClick={() => navigate(normalizeUrl(homepage))}
           className="p-2 rounded-lg text-foreground active:bg-muted transition-colors"
-          aria-label="Go home"
+          aria-label={t('go_home')}
         >
-          <Home className="h-5 w-5" />
+          <HomeIcon className="h-5 w-5" />
         </button>
 
         {/* Address Bar */}
@@ -147,7 +157,7 @@ export function MobileHeader({
                 e.target.select()
               }}
               onBlur={() => setIsFocused(false)}
-              placeholder="Enter .ton address or URL"
+              placeholder={t('enter_ton_address')}
               className={cn(
                 "w-full h-9 pr-8 text-base bg-background-secondary rounded-full border-0 focus-visible:ring-1 focus-visible:ring-primary",
                 isTonSite && !isFocused ? "pl-[80px]" : "px-4"
@@ -189,7 +199,7 @@ export function MobileHeader({
             'p-2 rounded-lg text-foreground active:bg-muted transition-colors',
             isLoading && 'animate-spin'
           )}
-          aria-label={isLoading ? 'Loading...' : 'Refresh'}
+          aria-label={isLoading ? t('loading') : t('refresh')}
         >
           <RefreshCw className="h-5 w-5" />
         </button>
@@ -198,7 +208,7 @@ export function MobileHeader({
         <button
           onClick={onOpenBookmarks}
           className="p-2 rounded-lg text-foreground active:bg-muted transition-colors"
-          aria-label="Open bookmarks"
+          aria-label={t('open_bookmarks')}
         >
           <Bookmark className="h-5 w-5" />
         </button>

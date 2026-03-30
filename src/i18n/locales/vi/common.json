@@ -1,0 +1,21 @@
+{
+  "save": "Lưu",
+  "cancel": "Hủy",
+  "go": "Đi",
+  "loading": "Đang tải...",
+  "back": "Quay lại",
+  "forward": "Tiến",
+  "new_tab": "Mới",
+  "tabs": "Tab",
+  "refresh": "Tải lại",
+  "settings": "Cài đặt",
+  "bookmarks": "Dấu trang",
+  "no_bookmarks": "Chưa có dấu trang",
+  "no_bookmarks_hint": "Nhấn biểu tượng ngôi sao để thêm",
+  "title": "Tiêu đề",
+  "url": "URL",
+  "go_home": "Về trang chủ",
+  "open_bookmarks": "Mở dấu trang",
+  "enter_ton_address": "Nhập địa chỉ .ton hoặc URL",
+  "tabs_count": "Tab ({{count}})"
+}

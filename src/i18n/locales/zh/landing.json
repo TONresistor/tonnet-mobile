@@ -1,0 +1,10 @@
+{
+  "title": "TON 浏览器",
+  "subtitle": "探索去中心化的 TON 网络。",
+  "connect_button": "连接到 TON 网络",
+  "connecting": "连接中...",
+  "step_starting": "正在启动代理...",
+  "step_syncing": "正在同步网络...",
+  "step_connected": "已连接！",
+  "footer": "点对点 · 抗审查 · 不追踪"
+}

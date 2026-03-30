@@ -1,0 +1,21 @@
+{
+  "save": "Enregistrer",
+  "cancel": "Annuler",
+  "go": "Aller",
+  "loading": "Chargement...",
+  "back": "Retour",
+  "forward": "Suivant",
+  "new_tab": "Nouvel onglet",
+  "tabs": "Onglets",
+  "refresh": "Actualiser",
+  "settings": "Paramètres",
+  "bookmarks": "Favoris",
+  "no_bookmarks": "Aucun favori",
+  "no_bookmarks_hint": "Appuyez sur l'étoile pour en ajouter un",
+  "title": "Titre",
+  "url": "URL",
+  "go_home": "Accueil",
+  "open_bookmarks": "Ouvrir les favoris",
+  "enter_ton_address": "Entrez une adresse .ton ou une URL",
+  "tabs_count": "Onglets ({{count}})"
+}

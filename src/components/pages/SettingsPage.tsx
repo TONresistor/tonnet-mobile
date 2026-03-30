@@ -6,11 +6,12 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   Cookie,
-  Terminal,
   ChevronRight,
   X,
   RefreshCw,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { SUPPORTED_LANGUAGES } from '@/i18n'
 import { platform } from '@/platform'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -85,9 +86,30 @@ function TonIcon({ className }: { className?: string }) {
   )
 }
 
+function CodeIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 22 14" fill="none">
+      <path d="M6.59065 3.33778C7.13645 2.80214 7.13645 1.93737 6.59065 1.40173C6.04486 0.86609 5.16369 0.86609 4.6179 1.40173L6.59065 3.33778ZM1.39573 6.5L0.409346 5.53197C-0.136449 6.06761 -0.136449 6.93238 0.409346 7.46803L1.39573 6.5ZM4.6179 11.5983C5.16369 12.1339 6.04486 12.1339 6.59065 11.5983C7.13645 11.0626 7.13645 10.1979 6.59065 9.66222L4.6179 11.5983ZM4.6179 1.40173L0.409346 5.53197L2.38211 7.46803L6.59065 3.33778L4.6179 1.40173ZM0.409346 7.46803L4.6179 11.5983L6.59065 9.66222L2.38211 5.53197L0.409346 7.46803Z" fill="currentColor"/>
+      <path d="M16.3509 9.66222C15.883 10.1979 15.883 11.0626 16.3509 11.5983C16.8187 12.1339 17.574 12.1339 18.0418 11.5983L16.3509 9.66222ZM20.8037 6.5L21.6491 7.46803C22.117 6.93238 22.117 6.06761 21.6491 5.53197L20.8037 6.5ZM18.0418 1.40173C17.574 0.86609 16.8187 0.86609 16.3509 1.40173C15.883 1.93737 15.883 2.80214 16.3509 3.33778L18.0418 1.40173ZM18.0418 11.5983L21.6491 7.46803L19.9582 5.53197L16.3509 9.66222L18.0418 11.5983ZM21.6491 5.53197L18.0418 1.40173L16.3509 3.33778L19.9582 7.46803L21.6491 5.53197Z" fill="currentColor"/>
+      <path d="M13.958 1.49763C14.1437 0.852295 13.6955 0.195636 12.972 0.0371299C12.2421 -0.127035 11.4994 0.269227 11.3201 0.908904L13.958 1.49763ZM8.042 12.5024C7.85632 13.1477 8.3045 13.8044 9.028 13.9629C9.75789 14.127 10.5006 13.7308 10.6799 13.0911L8.042 12.5024ZM11.3201 0.908904L8.042 12.5024L10.6799 13.0911L13.958 1.49763L11.3201 0.908904Z" fill="currentColor"/>
+    </svg>
+  )
+}
+
+function LanguageIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 22 21" fill="none">
+      <path fillRule="evenodd" clipRule="evenodd" d="M12.5874 0.182551C12.3494 -0.0608503 11.9599 -0.0608503 11.7219 0.182551C11.4803 0.422318 11.4803 0.814667 11.7219 1.05443L14.0299 3.37946C14.268 3.62286 14.6575 3.62286 14.8955 3.37946C15.1371 3.13969 15.1371 2.74734 14.8955 2.50757L12.5874 0.182551ZM20.2329 5.88612H18.5307C18.4333 9.17385 17.5389 11.7641 15.761 13.5514C15.6781 13.6386 15.5915 13.7222 15.5013 13.8057C16.9872 14.6631 18.9346 15.1136 21.3869 15.1136C21.7259 15.1136 22 15.3897 22 15.7311C22 16.0726 21.7259 16.3487 21.3869 16.3487C18.574 16.3487 16.2479 15.7893 14.4627 14.6159C12.6776 15.7893 10.3515 16.3487 7.5385 16.3487C7.1995 16.3487 6.92542 16.0726 6.92542 15.7311C6.92542 15.3897 7.1995 15.1136 7.5385 15.1136C9.99083 15.1136 11.9383 14.6631 13.4241 13.8057C13.3339 13.7222 13.2474 13.6386 13.1644 13.5514C11.3865 11.7641 10.4921 9.17385 10.3947 5.88612H8.69254C8.35354 5.88612 8.07946 5.61003 8.07946 5.26854C8.07946 4.92705 8.35354 4.65096 8.69254 4.65096H20.2329C20.5719 4.65096 20.846 4.92705 20.846 5.26854C20.846 5.61003 20.5719 5.88612 20.2329 5.88612ZM11.6245 5.88612H17.3009C17.2035 8.95951 16.3705 11.1901 14.8955 12.6796C14.7584 12.8176 14.6142 12.9484 14.4627 13.0755C14.3112 12.9484 14.167 12.8176 14.0299 12.6796C12.5549 11.1901 11.7219 8.95951 11.6245 5.88612Z" fill="currentColor"/>
+      <path fillRule="evenodd" clipRule="evenodd" d="M6.37726 7.36106C6.27988 7.12856 6.05629 6.97598 5.80745 6.97598C5.55861 6.97598 5.33502 7.12856 5.23765 7.36106L0.044491 20.1487C-0.0817308 20.4647 0.0697358 20.8244 0.383489 20.9552C0.697242 21.0823 1.05427 20.9298 1.1841 20.6137L2.91515 16.3487C2.91876 16.3487 2.91876 16.3487 2.92237 16.3487H8.69254C8.69614 16.3487 8.69614 16.3487 8.69975 16.3487L10.4308 20.6137C10.5606 20.9298 10.9177 21.0823 11.2314 20.9552C11.5452 20.8244 11.6966 20.4647 11.5704 20.1487L6.37726 7.36106ZM8.19847 15.1136L5.80745 9.22834L3.41644 15.1136H8.19847Z" fill="currentColor"/>
+    </svg>
+  )
+}
+
 type EditingField = 'proxyPort' | 'homepage' | null
 
 export function SettingsPage() {
+  const { t } = useTranslation('settings')
+  const { t: tc } = useTranslation('common')
   const [clearing, setClearing] = useState(false)
   const [cleared, setCleared] = useState(false)
   const [reconnecting, setReconnecting] = useState(false)
@@ -96,6 +118,7 @@ export function SettingsPage() {
   const [loadingLogs, setLoadingLogs] = useState(false)
   const [editingField, setEditingField] = useState<EditingField>(null)
   const [editValue, setEditValue] = useState('')
+  const [showLanguageSheet, setShowLanguageSheet] = useState(false)
 
   const { draft } = usePreferencesStore()
   const { status, disconnect, connect } = useProxyStore()
@@ -120,6 +143,7 @@ export function SettingsPage() {
   }
 
   const workingDraft = draft ?? defaultPreferences
+  const currentLanguage = SUPPORTED_LANGUAGES.find(l => l.code === workingDraft.language)
 
   const updateAndSave = <K extends keyof typeof workingDraft>(key: K, value: typeof workingDraft[K]) => {
     const store = usePreferencesStore.getState()
@@ -189,17 +213,17 @@ export function SettingsPage() {
     <div className="flex flex-col h-full bg-background-secondary overflow-auto scrollbar-hide">
       {/* Header */}
       <div className="bg-background border-b border-border px-5 py-4 pt-12 sticky top-0 z-10">
-        <h1 className="text-lg font-semibold text-foreground">Settings</h1>
+        <h1 className="text-lg font-semibold text-foreground">{t('title')}</h1>
       </div>
 
       <div className="px-3 pt-3 pb-24 space-y-4">
         {/* Network */}
-        <SectionGroup label="Network">
+        <SectionGroup label={t('network')}>
           <SettingsItem
             icon={AnonIcon}
             iconBg="bg-[#008BFF]"
-            label={reconnecting ? "Reconnecting..." : "Anonymous Mode"}
-            description={reconnecting ? "Switching proxy mode..." : "3-hop circuit for privacy"}
+            label={reconnecting ? t('reconnecting') : t('anonymous_mode')}
+            description={reconnecting ? t('reconnecting_desc') : t('anonymous_mode_desc')}
             right={
               <Toggle
                 checked={workingDraft.anonymousMode}
@@ -212,8 +236,8 @@ export function SettingsPage() {
           <SettingsItem
             icon={WifiIcon}
             iconBg="bg-blue-500"
-            label="Auto-connect"
-            description="Connect on app launch"
+            label={t('auto_connect')}
+            description={t('auto_connect_desc')}
             right={
               <Toggle
                 checked={workingDraft.autoConnect}
@@ -224,8 +248,8 @@ export function SettingsPage() {
           <SettingsItem
             icon={PortIcon}
             iconBg="bg-slate-500"
-            label="Proxy Port"
-            description="Local proxy server port"
+            label={t('proxy_port')}
+            description={t('proxy_port_desc')}
             onClick={() => openEditor('proxyPort')}
             right={
               <div className="flex items-center gap-1">
@@ -237,17 +261,32 @@ export function SettingsPage() {
         </SectionGroup>
 
         {/* General */}
-        <SectionGroup label="General">
+        <SectionGroup label={t('general')}>
           <SettingsItem
             icon={HomeIcon}
             iconBg="bg-orange-500"
-            label="Homepage"
-            description="Page for new tabs"
+            label={t('homepage')}
+            description={t('homepage_desc')}
             onClick={() => openEditor('homepage')}
             right={
               <div className="flex items-center gap-1">
                 <span className="text-[13px] text-muted-foreground truncate max-w-[120px]">
-                  {workingDraft.homepage === 'ton://start' ? 'Start Page' : workingDraft.homepage}
+                  {workingDraft.homepage === 'ton://start' ? t('start_page') : workingDraft.homepage}
+                </span>
+                <ChevronRight className="h-5 w-5 text-muted-foreground/60" />
+              </div>
+            }
+          />
+          <SettingsItem
+            icon={LanguageIcon}
+            iconBg="bg-violet-500"
+            label={t('language')}
+            description={t('language_desc')}
+            onClick={() => setShowLanguageSheet(true)}
+            right={
+              <div className="flex items-center gap-1">
+                <span className="text-[13px] text-muted-foreground">
+                  {currentLanguage?.nativeLabel}
                 </span>
                 <ChevronRight className="h-5 w-5 text-muted-foreground/60" />
               </div>
@@ -256,12 +295,12 @@ export function SettingsPage() {
         </SectionGroup>
 
         {/* Privacy */}
-        <SectionGroup label="Privacy">
+        <SectionGroup label={t('privacy')}>
           <SettingsItem
             icon={JsIcon}
             iconBg="bg-amber-500"
-            label="JavaScript"
-            description="Enable on .ton sites"
+            label={t('javascript')}
+            description={t('javascript_desc')}
             right={
               <Toggle
                 checked={workingDraft.javaScriptEnabled}
@@ -272,8 +311,8 @@ export function SettingsPage() {
           <SettingsItem
             icon={Cookie}
             iconBg="bg-yellow-700"
-            label="Third-Party Cookies"
-            description="Allow external cookies"
+            label={t('third_party_cookies')}
+            description={t('third_party_cookies_desc')}
             right={
               <Toggle
                 checked={workingDraft.thirdPartyCookies}
@@ -287,8 +326,8 @@ export function SettingsPage() {
           <SettingsItem
             icon={FlameIcon}
             iconBg="bg-cyan-500"
-            label="Clear on Exit"
-            description="Clear data when closing"
+            label={t('clear_on_exit')}
+            description={t('clear_on_exit_desc')}
             right={
               <Toggle
                 checked={workingDraft.clearOnExit}
@@ -299,8 +338,8 @@ export function SettingsPage() {
           <SettingsItem
             icon={TrashIcon}
             iconBg="bg-red-500"
-            label={cleared ? 'Cleared!' : clearing ? 'Clearing...' : 'Clear Browsing Data'}
-            description="Cache, cookies, history"
+            label={cleared ? t('cleared') : clearing ? t('clearing') : t('clear_browsing_data')}
+            description={t('clear_data_desc')}
             onClick={handleClearData}
             disabled={clearing}
             right={<ChevronRight className="h-5 w-5 text-muted-foreground/60" />}
@@ -308,24 +347,24 @@ export function SettingsPage() {
         </SectionGroup>
 
         {/* Debug */}
-        <SectionGroup label="Debug">
+        <SectionGroup label={t('debug')}>
           <SettingsItem
-            icon={Terminal}
+            icon={CodeIcon}
             iconBg="bg-emerald-500"
-            label="Proxy Logs"
-            description="View proxy output"
+            label={t('proxy_logs')}
+            description={t('proxy_logs_desc')}
             onClick={openLogs}
             right={<ChevronRight className="h-5 w-5 text-muted-foreground/60" />}
           />
         </SectionGroup>
 
         {/* About */}
-        <SectionGroup label="About">
+        <SectionGroup label={t('about')}>
           <SettingsItem
             icon={TonIcon}
             iconBg="bg-primary"
             label={APP_NAME}
-            description="Decentralized TON browser"
+            description={t('about_desc')}
             right={
               <span className="text-[13px] text-muted-foreground">v{APP_VERSION}</span>
             }
@@ -337,7 +376,7 @@ export function SettingsPage() {
       <BottomSheet
         open={editingField !== null}
         onClose={() => setEditingField(null)}
-        title={editingField === 'proxyPort' ? 'Proxy Port' : 'Homepage'}
+        title={editingField === 'proxyPort' ? t('proxy_port') : t('homepage')}
         showHandle
         showCloseButton={false}
         maxHeight="60vh"
@@ -346,8 +385,8 @@ export function SettingsPage() {
           <div className="space-y-4">
             <p className="text-[13px] text-muted-foreground">
               {editingField === 'proxyPort'
-                ? 'Port number for the local TON proxy server (1024-65535).'
-                : 'URL to open when creating a new tab. Leave empty for default start page.'}
+                ? t('proxy_port_edit_desc')
+                : t('homepage_edit_desc')}
             </p>
             <EditInput
               type={editingField === 'proxyPort' ? 'number' : 'text'}
@@ -362,24 +401,64 @@ export function SettingsPage() {
                 className="flex-1"
                 onClick={() => setEditingField(null)}
               >
-                Cancel
+                {tc('cancel')}
               </Button>
               <Button
                 className="flex-1"
                 onClick={saveEditor}
               >
-                Save
+                {tc('save')}
               </Button>
             </div>
           </div>
         )}
       </BottomSheet>
 
+      {/* Language Selection Sheet */}
+      <BottomSheet
+        open={showLanguageSheet}
+        onClose={() => setShowLanguageSheet(false)}
+        title={t('language')}
+        showHandle
+        showCloseButton={false}
+        maxHeight="60vh"
+      >
+        <div className="space-y-1">
+          {SUPPORTED_LANGUAGES.map((lang) => (
+            <button
+              key={lang.code}
+              onClick={() => {
+                updateAndSave('language', lang.code)
+                setShowLanguageSheet(false)
+              }}
+              className={cn(
+                "w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors",
+                workingDraft.language === lang.code
+                  ? "bg-primary/10 text-primary"
+                  : "active:bg-muted/50 text-foreground"
+              )}
+            >
+              <div className="flex flex-col items-start">
+                <span className="text-base font-medium">{lang.nativeLabel}</span>
+                <span className="text-[13px] text-muted-foreground">{lang.label}</span>
+              </div>
+              {workingDraft.language === lang.code && (
+                <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                  <svg className="w-3 h-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
+
       {/* Log Modal */}
       {showLogs && (
-        <div className="fixed inset-0 z-[60] bg-black/90 flex flex-col" role="dialog" aria-modal="true" aria-label="Proxy Logs">
+        <div className="fixed inset-0 z-[60] bg-black/90 flex flex-col" role="dialog" aria-modal="true" aria-label={t('proxy_logs')}>
           <div className="flex items-center justify-between px-5 py-3 pt-12 border-b border-border bg-background">
-            <span className="text-lg font-medium text-foreground">Proxy Logs</span>
+            <span className="text-lg font-medium text-foreground">{t('proxy_logs')}</span>
             <div className="flex gap-1">
               <button onClick={fetchLogs} disabled={loadingLogs} className="p-3 rounded-xl text-muted-foreground active:bg-muted/50 transition-colors duration-200">
                 <RefreshCw className={cn("h-5 w-5", loadingLogs && "animate-spin")} />
@@ -392,7 +471,7 @@ export function SettingsPage() {
           <div className="flex-1 overflow-auto p-3 font-mono text-xs">
             {logs.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
-                {loadingLogs ? 'Loading...' : 'No logs. Connect to proxy first.'}
+                {loadingLogs ? t('logs_loading') : t('logs_empty')}
               </p>
             ) : (
               logs.map((line, i) => (

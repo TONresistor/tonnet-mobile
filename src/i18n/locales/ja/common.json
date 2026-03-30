@@ -1,0 +1,21 @@
+{
+  "save": "保存",
+  "cancel": "キャンセル",
+  "go": "移動",
+  "loading": "読み込み中...",
+  "back": "戻る",
+  "forward": "進む",
+  "new_tab": "新規",
+  "tabs": "タブ",
+  "refresh": "更新",
+  "settings": "設定",
+  "bookmarks": "ブックマーク",
+  "no_bookmarks": "ブックマークはありません",
+  "no_bookmarks_hint": "星アイコンをタップして追加",
+  "title": "タイトル",
+  "url": "URL",
+  "go_home": "ホームへ",
+  "open_bookmarks": "ブックマークを開く",
+  "enter_ton_address": ".tonアドレスまたはURLを入力",
+  "tabs_count": "タブ ({{count}})"
+}

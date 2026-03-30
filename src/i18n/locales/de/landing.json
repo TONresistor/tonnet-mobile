@@ -1,0 +1,10 @@
+{
+  "title": "TON Browser",
+  "subtitle": "Entdecke das dezentrale TON-Netzwerk.",
+  "connect_button": "Mit TON-Netzwerk verbinden",
+  "connecting": "Verbinde...",
+  "step_starting": "Proxy wird gestartet...",
+  "step_syncing": "Mit Netzwerk synchronisieren...",
+  "step_connected": "Verbunden!",
+  "footer": "Peer-to-Peer – Zensurresistent – Kein Tracking"
+}

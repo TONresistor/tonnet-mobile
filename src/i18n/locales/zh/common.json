@@ -1,0 +1,21 @@
+{
+  "save": "保存",
+  "cancel": "取消",
+  "go": "前往",
+  "loading": "加载中...",
+  "back": "返回",
+  "forward": "前进",
+  "new_tab": "新建",
+  "tabs": "标签页",
+  "refresh": "刷新",
+  "settings": "设置",
+  "bookmarks": "书签",
+  "no_bookmarks": "暂无书签",
+  "no_bookmarks_hint": "点击星形图标即可添加",
+  "title": "标题",
+  "url": "网址",
+  "go_home": "返回主页",
+  "open_bookmarks": "打开书签",
+  "enter_ton_address": "输入 .ton 地址或网址",
+  "tabs_count": "标签页（{{count}}）"
+}

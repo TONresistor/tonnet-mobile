@@ -1,0 +1,10 @@
+{
+  "title": "TON Browser",
+  "subtitle": "विकेंद्रीकृत TON नेटवर्क एक्सप्लोर करें।",
+  "connect_button": "TON नेटवर्क से जोड़ें",
+  "connecting": "कनेक्ट हो रहे हैं...",
+  "step_starting": "Proxy शुरू हो रहा है...",
+  "step_syncing": "नेटवर्क से सिंक हो रहा है...",
+  "step_connected": "कनेक्ट हो गया!",
+  "footer": "Peer-to-peer - सेंसरशिप मुक्त - कोई ट्रैकिंग नहीं"
+}

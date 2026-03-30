@@ -1,0 +1,21 @@
+{
+  "save": "저장",
+  "cancel": "취소",
+  "go": "이동",
+  "loading": "로딩 중...",
+  "back": "뒤로",
+  "forward": "앞으로",
+  "new_tab": "새 탭",
+  "tabs": "탭",
+  "refresh": "새로고침",
+  "settings": "설정",
+  "bookmarks": "북마크",
+  "no_bookmarks": "북마크가 없습니다",
+  "no_bookmarks_hint": "별표 아이콘을 눌러 추가하세요",
+  "title": "제목",
+  "url": "URL",
+  "go_home": "홈으로",
+  "open_bookmarks": "북마크 열기",
+  "enter_ton_address": ".ton 주소 또는 URL 입력",
+  "tabs_count": "탭 ({{count}})"
+}

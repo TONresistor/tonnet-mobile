@@ -1,0 +1,10 @@
+{
+  "title": "TONブラウザ",
+  "subtitle": "分散型TONネットワークを探索しよう。",
+  "connect_button": "TONネットワークに接続",
+  "connecting": "接続中...",
+  "step_starting": "プロキシを起動中...",
+  "step_syncing": "ネットワークと同期中...",
+  "step_connected": "接続しました！",
+  "footer": "P2P・検閲耐性・トラッキングなし"
+}

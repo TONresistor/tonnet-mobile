@@ -1,0 +1,21 @@
+{
+  "save": "Kaydet",
+  "cancel": "İptal",
+  "go": "Git",
+  "loading": "Yükleniyor...",
+  "back": "Geri",
+  "forward": "İleri",
+  "new_tab": "Yeni",
+  "tabs": "Sekmeler",
+  "refresh": "Yenile",
+  "settings": "Ayarlar",
+  "bookmarks": "Yer İmleri",
+  "no_bookmarks": "Henüz yer imi yok",
+  "no_bookmarks_hint": "Eklemek için yıldız simgesine dokun",
+  "title": "Başlık",
+  "url": "URL",
+  "go_home": "Ana sayfaya git",
+  "open_bookmarks": "Yer imlerini aç",
+  "enter_ton_address": ".ton adresi veya URL girin",
+  "tabs_count": "Sekmeler ({{count}})"
+}

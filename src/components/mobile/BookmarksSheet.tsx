@@ -8,6 +8,7 @@ import { BottomSheet } from './BottomSheet'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useBookmarksStore } from '@/stores/bookmarks'
+import { useTranslation } from 'react-i18next'
 
 interface BookmarksSheetProps {
   open: boolean
@@ -16,6 +17,7 @@ interface BookmarksSheetProps {
 }
 
 export function BookmarksSheet({ open, onClose, onNavigate }: BookmarksSheetProps) {
+  const { t } = useTranslation('common')
   // State for editing
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
@@ -65,11 +67,11 @@ export function BookmarksSheet({ open, onClose, onNavigate }: BookmarksSheetProp
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="Bookmarks">
+    <BottomSheet open={open} onClose={onClose} title={t('bookmarks')}>
       {bookmarks.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
-          <p>No bookmarks yet</p>
-          <p className="text-sm mt-1">Tap the star icon to add one</p>
+          <p>{t('no_bookmarks')}</p>
+          <p className="text-sm mt-1">{t('no_bookmarks_hint')}</p>
         </div>
       ) : (
         <div className="space-y-1">
@@ -81,18 +83,18 @@ export function BookmarksSheet({ open, onClose, onNavigate }: BookmarksSheetProp
                   <Input
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    placeholder="Title"
+                    placeholder={t('title')}
                     className="h-9"
                   />
                   <Input
                     value={editUrl}
                     onChange={(e) => setEditUrl(e.target.value)}
-                    placeholder="URL"
+                    placeholder={t('url')}
                     className="h-9"
                   />
                   <div className="flex gap-2">
                     <Button size="sm" onClick={handleSave} className="flex-1">
-                      <Check className="h-4 w-4 mr-1" /> Save
+                      <Check className="h-4 w-4 mr-1" /> {t('save')}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={handleCancel}>
                       <X className="h-4 w-4" />

@@ -1,0 +1,21 @@
+{
+  "save": "Salva",
+  "cancel": "Annulla",
+  "go": "Vai",
+  "loading": "Caricamento...",
+  "back": "Indietro",
+  "forward": "Avanti",
+  "new_tab": "Nuovo",
+  "tabs": "Schede",
+  "refresh": "Aggiorna",
+  "settings": "Impostazioni",
+  "bookmarks": "Segnalibri",
+  "no_bookmarks": "Nessun segnalibro",
+  "no_bookmarks_hint": "Tocca l'icona a stella per aggiungerne uno",
+  "title": "Titolo",
+  "url": "URL",
+  "go_home": "Vai alla home",
+  "open_bookmarks": "Apri i segnalibri",
+  "enter_ton_address": "Inserisci un indirizzo .ton o un URL",
+  "tabs_count": "Schede ({{count}})"
+}

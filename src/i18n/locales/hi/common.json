@@ -1,0 +1,21 @@
+{
+  "save": "सहेजें",
+  "cancel": "रद्द करें",
+  "go": "जाएं",
+  "loading": "लोड हो रहा है...",
+  "back": "वापस",
+  "forward": "आगे",
+  "new_tab": "नया",
+  "tabs": "Tabs",
+  "refresh": "रीफ्रेश",
+  "settings": "सेटिंग्स",
+  "bookmarks": "बुकमार्क",
+  "no_bookmarks": "अभी तक कोई बुकमार्क नहीं",
+  "no_bookmarks_hint": "जोड़ने के लिए स्टार आइकन दबाएं",
+  "title": "शीर्षक",
+  "url": "URL",
+  "go_home": "होम पर जाएं",
+  "open_bookmarks": "बुकमार्क खोलें",
+  "enter_ton_address": ".ton पता या URL दर्ज करें",
+  "tabs_count": "Tabs ({{count}})"
+}

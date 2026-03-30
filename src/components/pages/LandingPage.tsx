@@ -13,14 +13,11 @@ import loadingGif from '@/assets/loading.gif'
 import { APP_VERSION } from '@shared/constants'
 import { usePreferences } from '@/stores/preferences'
 import { normalizeUrl } from '@/lib/url'
-
-const CONNECTION_STEPS = [
-  'Starting proxy...',
-  'Syncing with network...',
-  'Connected!'
-]
+import { useTranslation } from 'react-i18next'
 
 export function LandingPage() {
+  const { t } = useTranslation('landing')
+  const connectionSteps = [t('step_starting'), t('step_syncing'), t('step_connected')]
   const { isConnecting, isConnected, error, connect } = useProxy()
   const { navigate } = useSettingsStore()
   const [currentStep, setCurrentStep] = useState(-1)
@@ -54,7 +51,7 @@ export function LandingPage() {
     }
   }, [isConnecting])
 
-  const progressPercent = currentStep >= 0 ? ((currentStep + 1) / CONNECTION_STEPS.length) * 100 : 0
+  const progressPercent = currentStep >= 0 ? ((currentStep + 1) / connectionSteps.length) * 100 : 0
 
   return (
     <div className="relative flex flex-col items-center justify-center h-full w-full bg-background-secondary">
@@ -65,9 +62,9 @@ export function LandingPage() {
         className="w-[200px] h-[200px] mb-8 transition-opacity duration-300"
       />
 
-      <h1 className="text-[42px] font-bold text-foreground mb-3">TON Browser</h1>
+      <h1 className="text-[42px] font-bold text-foreground mb-3">{t('title')}</h1>
 
-      <p className="text-muted-foreground text-xl mb-8">Explore the decentralized TON Network.</p>
+      <p className="text-muted-foreground text-xl mb-8">{t('subtitle')}</p>
 
       {/* Connect Button */}
       <button
@@ -86,10 +83,10 @@ export function LandingPage() {
         {isConnecting ? (
           <div className="flex items-center justify-center gap-3">
             <Loader2 className="w-6 h-6 text-primary-foreground animate-spin" />
-            <span>{stepMessage || 'Connecting...'}</span>
+            <span>{stepMessage || t('connecting')}</span>
           </div>
         ) : (
-          'Connect to TON Network'
+          t('connect_button')
         )}
       </button>
 
@@ -105,13 +102,13 @@ export function LandingPage() {
 
         {/* Step Label */}
         <p className={`text-center text-sm ${error ? 'text-destructive' : 'text-muted-foreground'}`}>
-          {error || (currentStep >= 0 ? CONNECTION_STEPS[currentStep] : '')}
+          {error || (currentStep >= 0 ? connectionSteps[currentStep] : '')}
         </p>
       </div>
 
       {/* Footer */}
       <div className="absolute bottom-8 text-center">
-        <p className="text-muted-foreground text-sm">Peer-to-peer - Censorship Resistant - No Tracking</p>
+        <p className="text-muted-foreground text-sm">{t('footer')}</p>
         <p className="text-muted-foreground/50 text-xs mt-1">v{APP_VERSION}</p>
       </div>
     </div>

@@ -1,0 +1,21 @@
+{
+  "save": "Сохранить",
+  "cancel": "Отмена",
+  "go": "Перейти",
+  "loading": "Загрузка...",
+  "back": "Назад",
+  "forward": "Вперёд",
+  "new_tab": "Новая",
+  "tabs": "Вкладки",
+  "refresh": "Обновить",
+  "settings": "Настройки",
+  "bookmarks": "Закладки",
+  "no_bookmarks": "Закладок пока нет",
+  "no_bookmarks_hint": "Нажмите на звёздочку, чтобы добавить",
+  "title": "Название",
+  "url": "Адрес",
+  "go_home": "На главную",
+  "open_bookmarks": "Открыть закладки",
+  "enter_ton_address": "Введите .ton адрес или URL",
+  "tabs_count": "Вкладки ({{count}})"
+}

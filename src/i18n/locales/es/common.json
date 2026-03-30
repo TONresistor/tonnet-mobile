@@ -1,0 +1,21 @@
+{
+  "save": "Guardar",
+  "cancel": "Cancelar",
+  "go": "Ir",
+  "loading": "Cargando...",
+  "back": "Atrás",
+  "forward": "Adelante",
+  "new_tab": "Nueva",
+  "tabs": "Pestañas",
+  "refresh": "Actualizar",
+  "settings": "Configuración",
+  "bookmarks": "Marcadores",
+  "no_bookmarks": "Sin marcadores aún",
+  "no_bookmarks_hint": "Toca el ícono de estrella para añadir uno",
+  "title": "Título",
+  "url": "URL",
+  "go_home": "Ir al inicio",
+  "open_bookmarks": "Abrir marcadores",
+  "enter_ton_address": "Ingresa una dirección .ton o URL",
+  "tabs_count": "Pestañas ({{count}})"
+}

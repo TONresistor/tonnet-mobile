@@ -1,0 +1,21 @@
+{
+  "save": "Speichern",
+  "cancel": "Abbrechen",
+  "go": "Los",
+  "loading": "Laden...",
+  "back": "Zurück",
+  "forward": "Vorwärts",
+  "new_tab": "Neu",
+  "tabs": "Tabs",
+  "refresh": "Aktualisieren",
+  "settings": "Einstellungen",
+  "bookmarks": "Lesezeichen",
+  "no_bookmarks": "Noch keine Lesezeichen",
+  "no_bookmarks_hint": "Tippe auf das Stern-Symbol, um eines hinzuzufügen",
+  "title": "Titel",
+  "url": "URL",
+  "go_home": "Zur Startseite",
+  "open_bookmarks": "Lesezeichen öffnen",
+  "enter_ton_address": ".ton-Adresse oder URL eingeben",
+  "tabs_count": "Tabs ({{count}})"
+}

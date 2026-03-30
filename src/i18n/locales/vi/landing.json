@@ -1,0 +1,10 @@
+{
+  "title": "TON Browser",
+  "subtitle": "Khám phá mạng TON phi tập trung.",
+  "connect_button": "Kết nối với mạng TON",
+  "connecting": "Đang kết nối...",
+  "step_starting": "Đang khởi động proxy...",
+  "step_syncing": "Đang đồng bộ với mạng...",
+  "step_connected": "Đã kết nối!",
+  "footer": "Ngang hàng - Chống kiểm duyệt - Không theo dõi"
+}

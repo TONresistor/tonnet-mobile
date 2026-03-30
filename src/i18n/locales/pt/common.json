@@ -1,0 +1,21 @@
+{
+  "save": "Salvar",
+  "cancel": "Cancelar",
+  "go": "Ir",
+  "loading": "Carregando...",
+  "back": "Voltar",
+  "forward": "Avançar",
+  "new_tab": "Nova",
+  "tabs": "Abas",
+  "refresh": "Atualizar",
+  "settings": "Configurações",
+  "bookmarks": "Favoritos",
+  "no_bookmarks": "Nenhum favorito ainda",
+  "no_bookmarks_hint": "Toque na estrela para adicionar um",
+  "title": "Título",
+  "url": "URL",
+  "go_home": "Ir para início",
+  "open_bookmarks": "Abrir favoritos",
+  "enter_ton_address": "Digite um endereço .ton ou URL",
+  "tabs_count": "Abas ({{count}})"
+}
