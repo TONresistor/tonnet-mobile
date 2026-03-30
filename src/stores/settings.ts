@@ -303,13 +303,11 @@ export const useSettingsStore = create<SettingsState>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          const activeTab = state.tabs.find((t) => t.id === state.activeTabId)
-          if (activeTab) {
-            state.currentUrl = activeTab.url
-            state.activeView = getViewFromUrl(activeTab.url)
-            state.canGoBack = activeTab.historyIndex > 0
-            state.canGoForward = activeTab.historyIndex < activeTab.history.length - 1
-          }
+          // Always start fresh on app launch — proxy is not connected yet
+          state.currentUrl = ''
+          state.activeView = 'landing'
+          state.canGoBack = false
+          state.canGoForward = false
         }
       },
     }

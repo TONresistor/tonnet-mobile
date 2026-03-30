@@ -23,8 +23,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * TonProxyPlugin - Capacitor plugin for TON Proxy
  *
  * Manages the TON network proxy for browsing .ton domains.
- * Generates config.json and nodes-pool.json matching tonutils-proxy format,
- * then delegates to StartProxyInDir.
+ * Generates config.json for tonutils-proxy, delegates to StartProxyInDir.
+ * Tunnel relays are discovered via DHT overlay (no static seed file).
  */
 @CapacitorPlugin(name = "TonProxy")
 public class TonProxyPlugin extends Plugin {
@@ -122,10 +122,9 @@ public class TonProxyPlugin extends Plugin {
      */
     private void writeProxyConfig(File proxyDir, boolean tunnelEnabled) throws Exception {
         File configFile = new File(proxyDir, "config.json");
-        String nodesPoolPath = tunnelEnabled
-            ? new File(proxyDir, "nodes-pool.json").getAbsolutePath()
-            : "";
-        int tunnelSections = tunnelEnabled ? 2 : 1;
+        // tonutils-proxy v2.1+ discovers tunnel relays via DHT overlay
+        String nodesPoolPath = "";
+        int tunnelSections = tunnelEnabled ? 2 : 0;
 
         if (configFile.exists()) {
             // Patch existing config — preserve keys
@@ -193,42 +192,6 @@ public class TonProxyPlugin extends Plugin {
     }
 
     /**
-     * Write nodes-pool.json if it does not already exist.
-     * Node keys are base64-decoded to byte arrays then stored as int arrays (0-255).
-     */
-    private void writeNodesPool(File proxyDir) throws Exception {
-        File poolFile = new File(proxyDir, "nodes-pool.json");
-        if (poolFile.exists()) {
-            log("nodes-pool.json already exists, skipping");
-            return;
-        }
-
-        String[] nodeKeysB64 = {
-            "0nAqzFCklgG1vJFgKHqU7Z87c7RHYn345e4jPnxqnxM=",
-            "cOYXQd4ov4pc7OjX26wm90VF35e44NGL6SwGnepiVSE=",
-            "DVXr339Go5qPh5eLvVtDWlw16hBrapUXb0u9acYGUiI=",
-            "CYHphrvG8HL0CXfTk3egLBRxoS8NR40YtcWZdvl3HJw="
-        };
-
-        JSONArray nodesArray = new JSONArray();
-        for (String keyB64 : nodeKeysB64) {
-            byte[] keyBytes = Base64.decode(keyB64, Base64.DEFAULT);
-            JSONObject node = new JSONObject();
-            node.put("Key", bytesToIntArray(keyBytes));
-            node.put("Payment", JSONObject.NULL);
-            nodesArray.put(node);
-        }
-
-        JSONObject pool = new JSONObject();
-        pool.put("NodesPool", nodesArray);
-
-        try (FileWriter writer = new FileWriter(poolFile)) {
-            writer.write(pool.toString(2));
-        }
-        log("Generated nodes-pool.json with " + nodeKeysB64.length + " nodes");
-    }
-
-    /**
      * Start the TON proxy server
      *
      * @param call PluginCall with options:
@@ -273,9 +236,6 @@ public class TonProxyPlugin extends Plugin {
                 proxyDir.mkdirs();
 
                 writeProxyConfig(proxyDir, finalAnonymous);
-                if (finalAnonymous) {
-                    writeNodesPool(proxyDir);
-                }
 
                 log("Calling native StartProxyInDir(" + finalPort + ", " + proxyDir.getAbsolutePath() + ")");
                 String result = StartProxyInDir((short) finalPort, proxyDir.getAbsolutePath());
@@ -458,6 +418,22 @@ public class TonProxyPlugin extends Plugin {
     @PluginMethod
     public void clearLogs(PluginCall call) {
         clearLogBuffer();
+        call.resolve();
+    }
+
+    /**
+     * Set third-party cookie policy
+     */
+    @PluginMethod
+    public void setThirdPartyCookies(PluginCall call) {
+        boolean enabled = Boolean.TRUE.equals(call.getBoolean("enabled", false));
+        Activity activity = getActivity();
+        if (activity instanceof com.getcapacitor.BridgeActivity) {
+            activity.runOnUiThread(() -> {
+                android.webkit.WebView wv = ((com.getcapacitor.BridgeActivity) activity).getBridge().getWebView();
+                android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(wv, enabled);
+            });
+        }
         call.resolve();
     }
 }

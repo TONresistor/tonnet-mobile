@@ -61,6 +61,11 @@ export interface TonProxyPlugin {
   clearLogs(): Promise<void>
 
   /**
+   * Set third-party cookie policy
+   */
+  setThirdPartyCookies(options: { enabled: boolean }): Promise<void>
+
+  /**
    * Add a listener for proxy events
    */
   addListener(

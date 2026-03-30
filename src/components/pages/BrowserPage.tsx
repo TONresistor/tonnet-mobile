@@ -9,6 +9,7 @@ import { Globe, AlertCircle, Loader2, RefreshCw, ChevronLeft, ChevronRight } fro
 import { useSettingsStore } from '@/stores/settings'
 import { useShallow } from 'zustand/react/shallow'
 import { useProxyStore } from '@/stores/proxy'
+import { usePreferences } from '@/stores/preferences'
 import { Button } from '@/components/ui/button'
 
 const SWIPE_THRESHOLD = 80
@@ -27,6 +28,7 @@ export function BrowserPage() {
     )
   const proxyStatus = useProxyStore((state) => state.status)
   const isProxyConnected = proxyStatus === 'connected'
+  const { javaScriptEnabled } = usePreferences()
 
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -194,7 +196,7 @@ export function BrowserPage() {
             className="w-full h-full border-0"
             onLoad={handleIframeLoad}
             onError={handleIframeError}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            sandbox={`${javaScriptEnabled ? 'allow-scripts ' : ''}allow-same-origin allow-forms allow-popups`}
             referrerPolicy="no-referrer"
             allow=""
             title={displayUrl}

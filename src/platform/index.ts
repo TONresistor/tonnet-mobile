@@ -106,7 +106,7 @@ const proxyApi = {
       try {
         let timedOut = false
         const timeout = new Promise<{ success: false; port: 0 }>((resolve) =>
-          setTimeout(() => { timedOut = true; resolve({ success: false, port: 0 }) }, 60000)
+          setTimeout(() => { timedOut = true; resolve({ success: false, port: 0 }) }, 120000)
         )
         const result = await Promise.race([TonProxy.start({ port, anonymous }), timeout])
         if (timedOut) {

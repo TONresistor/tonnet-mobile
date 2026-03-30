@@ -169,6 +169,21 @@ export function SettingsPage() {
         {/* Privacy Section */}
         <SettingsSection title="Privacy" icon={Shield}>
           <SettingsToggle
+            label="JavaScript"
+            description="Enable JavaScript on .ton sites"
+            checked={workingDraft.javaScriptEnabled}
+            onChange={(checked) => updateAndSave('javaScriptEnabled', checked)}
+          />
+          <SettingsToggle
+            label="Third-Party Cookies"
+            description="Allow cookies from external domains"
+            checked={workingDraft.thirdPartyCookies}
+            onChange={(checked) => {
+              updateAndSave('thirdPartyCookies', checked)
+              TonProxy.setThirdPartyCookies({ enabled: checked }).catch(() => {})
+            }}
+          />
+          <SettingsToggle
             label="Clear on Exit"
             description="Clear browsing data when closing"
             checked={workingDraft.clearOnExit}

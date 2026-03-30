@@ -15,9 +15,8 @@ android/*.iml
 android/app/*.iml
 android/capacitor-cordova-android-plugins/build/
 
-# Native libraries (large binary files)
-# Native libs are now committed for CI builds
-# android/app/libs/jniLibs/
+# Native libraries (built from TONresistor/Tonutils-Proxy releases)
+android/app/libs/jniLibs/
 
 # IDE
 .idea/
@@ -51,3 +50,11 @@ coverage/
 
 # Security reports (sensitive, not for VCS)
 VULNS.md
+findings.md
+
+# Obsidian
+.obsidian/
+
+# Proxy config (contains generated keys)
+config.json
+fdroid/

@@ -22,6 +22,8 @@ export interface AppPreferences {
 
   // Privacy
   clearOnExit: boolean
+  javaScriptEnabled: boolean
+  thirdPartyCookies: boolean
 }
 
 // Default preferences (mobile-optimized)
@@ -39,6 +41,8 @@ export const defaultPreferences: AppPreferences = {
 
   // Privacy
   clearOnExit: false,
+  javaScriptEnabled: true,
+  thirdPartyCookies: false,
 }
 
 interface PreferencesState {
@@ -149,7 +153,8 @@ export const usePreferencesStore = create<PreferencesState>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          // After rehydration, sync draft with preferences and mark as loaded
+          // Merge defaults for new fields not in persisted state
+          state.preferences = { ...defaultPreferences, ...state.preferences }
           state.draft = { ...state.preferences }
           state.isLoaded = true
 
