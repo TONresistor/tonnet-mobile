@@ -93,6 +93,13 @@ export function BrowserPage() {
   }
 
   const handleTouchEnd = () => {
+    // Let Android system gesture handle edge swipes
+    const isEdgeSwipe = startX.current < 40 || startX.current > window.innerWidth - 40
+    if (isEdgeSwipe) {
+      setSwipeX(0)
+      return
+    }
+
     if (swipeX > SWIPE_THRESHOLD && canGoBack) {
       goBack()
     } else if (swipeX < -SWIPE_THRESHOLD && canGoForward) {

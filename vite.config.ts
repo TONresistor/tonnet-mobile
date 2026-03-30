@@ -14,5 +14,14 @@ export default defineConfig({
     outDir: 'dist',
     target: 'es2020',
     cssTarget: 'chrome80',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-ui': ['lucide-react', 'class-variance-authority', 'clsx', 'tailwind-merge'],
+          'vendor-state': ['zustand'],
+        },
+      },
+    },
   },
 })

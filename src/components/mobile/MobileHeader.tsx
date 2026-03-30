@@ -3,7 +3,7 @@
  * Contains home button, address bar, and refresh button.
  */
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Home, X, RefreshCw, Star, Bookmark } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -53,6 +53,7 @@ export function MobileHeader({
 }: MobileHeaderProps) {
   const [inputValue, setInputValue] = useState(url)
   const [isFocused, setIsFocused] = useState(false)
+  const lastSubmitTime = useRef(0)
   const { navigate } = useSettingsStore()
   const { homepage } = usePreferences()
   const isAnonymous = useProxyStore((state) => state.isAnonymous)
@@ -96,6 +97,9 @@ export function MobileHeader({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const now = Date.now()
+    if (now - lastSubmitTime.current < 300) return
+    lastSubmitTime.current = now
     const trimmedUrl = inputValue.trim()
     if (trimmedUrl) {
       onUrlSubmit(trimmedUrl)

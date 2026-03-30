@@ -80,6 +80,9 @@ dependencies {
     implementation project(':capacitor-android')
     implementation project(':capacitor-cordova-android-plugins')
 
+    // Leak detection (debug only)
+    debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.14'
+
     // Testing
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"

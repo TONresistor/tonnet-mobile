@@ -31,6 +31,9 @@ public class MainActivity extends BridgeActivity {
 
         super.onCreate(savedInstanceState);
 
+        WebView.setWebContentsDebuggingEnabled(
+                0 != (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE));
+
         // Configure WebView for privacy
         WebView webView = getBridge().getWebView();
         if (webView != null) {
@@ -60,6 +63,8 @@ public class MainActivity extends BridgeActivity {
 
             // Require user gesture to start media playback
             settings.setMediaPlaybackRequiresUserGesture(true);
+
+            settings.setSafeBrowsingEnabled(true);
 
             // Block third-party cookies
             android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
@@ -112,6 +117,17 @@ public class MainActivity extends BridgeActivity {
             command -> command.run(),
             () -> {}
         );
+    }
+
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level >= TRIM_MEMORY_RUNNING_LOW) {
+            WebView webView = getBridge().getWebView();
+            if (webView != null) {
+                webView.clearCache(false);
+            }
+        }
     }
 
     public void clearBrowsingDataNative() {

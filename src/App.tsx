@@ -3,7 +3,7 @@
  * Handles layout selection (mobile/desktop) and page routing.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { App as CapacitorApp } from '@capacitor/app'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { useSettingsStore } from '@/stores/settings'
@@ -16,9 +16,9 @@ import { normalizeUrl } from '@/lib/url'
 
 // Pages
 import { LandingPage } from '@/components/pages/LandingPage'
-import { StartPage } from '@/components/pages/StartPage'
-import { SettingsPage } from '@/components/pages/SettingsPage'
-import { BrowserPage } from '@/components/pages/BrowserPage'
+const StartPage = lazy(() => import('@/components/pages/StartPage').then(m => ({ default: m.StartPage })))
+const SettingsPage = lazy(() => import('@/components/pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const BrowserPage = lazy(() => import('@/components/pages/BrowserPage').then(m => ({ default: m.BrowserPage })))
 
 // Mobile components
 import { MobileHeader } from '@/components/mobile/MobileHeader'
@@ -130,12 +130,12 @@ function App() {
       case 'landing':
         return <LandingPage />
       case 'settings':
-        return <SettingsPage />
+        return <Suspense fallback={null}><SettingsPage /></Suspense>
       case 'web':
-        return <BrowserPage />
+        return <Suspense fallback={null}><BrowserPage /></Suspense>
       case 'start':
       default:
-        return <StartPage />
+        return <Suspense fallback={null}><StartPage /></Suspense>
     }
   }
 

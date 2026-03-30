@@ -81,7 +81,7 @@ export function BottomSheet({
   return (
     <div
       className={cn(
-        'fixed inset-0 z-50 transition-opacity duration-300',
+        'fixed inset-0 z-[60] transition-opacity duration-300',
         open ? 'opacity-100' : 'opacity-0 pointer-events-none'
       )}
       role="dialog"
