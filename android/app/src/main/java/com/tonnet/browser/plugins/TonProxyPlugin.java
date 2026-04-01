@@ -122,7 +122,7 @@ public class TonProxyPlugin extends Plugin {
      */
     private void writeProxyConfig(File proxyDir, boolean tunnelEnabled) throws Exception {
         File configFile = new File(proxyDir, "config.json");
-        // tonutils-proxy v2.1+ discovers tunnel relays via DHT overlay
+        // tonutils-proxy v1.9+ discovers tunnel relays via DHT overlay
         String nodesPoolPath = "";
         int tunnelSections = tunnelEnabled ? 2 : 0;
 
