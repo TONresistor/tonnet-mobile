@@ -89,23 +89,39 @@ jobs:
 
       - name: Build APK
         working-directory: android
-        run: ./gradlew assembleRelease
+        run: |
+          if [ "${{ github.event.release.prerelease }}" = "true" ]; then
+            ./gradlew assembleBetaRelease
+          else
+            ./gradlew assembleProdRelease
+          fi
 
       - name: Sign APK
         run: |
-          echo "${{ secrets.SIGNING_KEY }}" | base64 -d > /tmp/keystore.jks
-          UNSIGNED=$(find android/app/build/outputs/apk/release -name '*-unsigned.apk' | head -1)
-          ALIGNED=/tmp/app-aligned.apk
-          ${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools/ | sort -V | tail -1)/zipalign -f 4 "$UNSIGNED" "$ALIGNED"
-          ${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools/ | sort -V | tail -1)/apksigner sign \
-            --ks /tmp/keystore.jks \
-            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
-            --ks-pass "pass:${{ secrets.KEY_STORE_PASSWORD }}" \
-            --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
-            "$ALIGNED"
+          UNSIGNED=$(find android/app/build/outputs/apk -name '*-release-unsigned.apk' | head -1)
           VERSION="${{ github.event.release.tag_name || 'dev' }}"
+          BUILD_TOOLS="${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools/ | sort -V | tail -1)"
+          ALIGNED=/tmp/app-aligned.apk
+          ${BUILD_TOOLS}/zipalign -f 4 "$UNSIGNED" "$ALIGNED"
+          if [ "${{ github.event.release.prerelease }}" = "true" ]; then
+            if [ ! -f ~/.android/debug.keystore ]; then
+              mkdir -p ~/.android
+              keytool -genkeypair -v -keystore ~/.android/debug.keystore -keyalg RSA -keysize 2048 \
+                -validity 10000 -alias androiddebugkey -storepass android -keypass android \
+                -dname "CN=Android Debug,O=Android,C=US"
+            fi
+            ${BUILD_TOOLS}/apksigner sign --ks ~/.android/debug.keystore --ks-pass pass:android "$ALIGNED"
+          else
+            echo "${{ secrets.SIGNING_KEY }}" | base64 -d > /tmp/keystore.jks
+            ${BUILD_TOOLS}/apksigner sign \
+              --ks /tmp/keystore.jks \
+              --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+              --ks-pass "pass:${{ secrets.KEY_STORE_PASSWORD }}" \
+              --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+              "$ALIGNED"
+            rm -f /tmp/keystore.jks
+          fi
           mv "$ALIGNED" tonnet-browser-${VERSION}.apk
-          rm -f /tmp/keystore.jks
 
       - name: Upload APK to Release
         if: github.event_name == 'release'
@@ -127,7 +143,7 @@ jobs:
   notify:
     needs: build
     runs-on: ubuntu-latest
-    if: always()
+    if: success()
 
     steps:
       - name: Checkout
@@ -146,13 +162,7 @@ jobs:
             exit 0
           fi
           VERSION="${{ github.event.release.tag_name || 'dev' }}"
-          if [ "$BUILD_RESULT" = "success" ]; then
-            ICON="✅"
-          else
-            ICON="❌"
-          fi
-          TEXT="${ICON} <b>[Mobile] Release ${VERSION}</b>"
-          printf -v TEXT '%s\n\nBuild: %s' "$TEXT" "$BUILD_RESULT"
+          TEXT="✅ <b>[Mobile] Release ${VERSION}</b>"
           RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${VERSION}"
           printf -v TEXT '%s\n<a href="%s">View release</a>' "$TEXT" "$RELEASE_URL"
           curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \

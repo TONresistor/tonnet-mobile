@@ -2,8 +2,11 @@
  * Shared constants.
  */
 
-export const APP_NAME = 'Tonnet Browser'
-export const APP_VERSION = '1.0.0'
+declare const __APP_NAME__: string
+declare const __APP_VERSION__: string
+
+export const APP_NAME = __APP_NAME__
+export const APP_VERSION = __APP_VERSION__
 
 export const DEFAULT_BOOKMARKS = [
   { id: '1', url: 'http://tonnet-sync-check.ton', title: 'Sync Check', createdAt: Date.now() },
