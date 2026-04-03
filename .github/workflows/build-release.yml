@@ -92,21 +92,20 @@ jobs:
         run: ./gradlew assembleRelease
 
       - name: Sign APK
-        uses: ilharp/sign-android-release@v1.0.5
-        id: sign_app
-        with:
-          releaseDirectory: android/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: "34.0.0"
-
-      - name: Rename APK
         run: |
+          echo "${{ secrets.SIGNING_KEY }}" | base64 -d > /tmp/keystore.jks
+          UNSIGNED=$(find android/app/build/outputs/apk/release -name '*-unsigned.apk' | head -1)
+          ALIGNED=/tmp/app-aligned.apk
+          ${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools/ | sort -V | tail -1)/zipalign -f 4 "$UNSIGNED" "$ALIGNED"
+          ${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools/ | sort -V | tail -1)/apksigner sign \
+            --ks /tmp/keystore.jks \
+            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+            --ks-pass "pass:${{ secrets.KEY_STORE_PASSWORD }}" \
+            --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+            "$ALIGNED"
           VERSION="${{ github.event.release.tag_name || 'dev' }}"
-          mv ${{ steps.sign_app.outputs.signedReleaseFile }} tonnet-browser-${VERSION}.apk
+          mv "$ALIGNED" tonnet-browser-${VERSION}.apk
+          rm -f /tmp/keystore.jks
 
       - name: Upload APK to Release
         if: github.event_name == 'release'
