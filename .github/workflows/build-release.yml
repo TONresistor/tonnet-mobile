@@ -27,6 +27,8 @@ jobs:
   build:
     needs: validate
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout code
