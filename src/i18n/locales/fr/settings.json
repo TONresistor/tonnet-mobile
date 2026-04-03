@@ -34,5 +34,9 @@
   "logs_loading": "Chargement...",
   "logs_empty": "Aucun journal. Connectez-vous d'abord au proxy.",
   "about": "À propos",
-  "about_desc": "Navigateur TON décentralisé"
+  "about_desc": "Navigateur TON décentralisé",
+  "bookmarks": "Favoris",
+  "bookmarks_desc": "Gérer les sites enregistrés",
+  "bookmarks_empty": "Aucun favori",
+  "bookmarks_add": "Ajouter un favori"
 }

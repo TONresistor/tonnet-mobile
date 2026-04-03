@@ -34,5 +34,9 @@
   "logs_loading": "Laden...",
   "logs_empty": "Keine Logs. Zuerst mit dem Proxy verbinden.",
   "about": "Über",
-  "about_desc": "Dezentraler TON-Browser"
+  "about_desc": "Dezentraler TON-Browser",
+  "bookmarks": "Lesezeichen",
+  "bookmarks_desc": "Gespeicherte Seiten verwalten",
+  "bookmarks_empty": "Keine Lesezeichen",
+  "bookmarks_add": "Lesezeichen hinzufügen"
 }

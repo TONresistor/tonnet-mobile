@@ -103,6 +103,8 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onDestroy() {
+        // Stop native Go proxy to prevent zombie processes
+        TonProxyPlugin.stopNativeProxy();
         // Clear proxy configuration when activity is destroyed
         clearProxy();
         super.onDestroy();

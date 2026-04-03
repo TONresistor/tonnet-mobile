@@ -34,5 +34,9 @@
   "logs_loading": "Carregando...",
   "logs_empty": "Sem logs. Conecte-se ao proxy primeiro.",
   "about": "Sobre",
-  "about_desc": "Navegador TON descentralizado"
+  "about_desc": "Navegador TON descentralizado",
+  "bookmarks": "Favoritos",
+  "bookmarks_desc": "Gerenciar sites salvos",
+  "bookmarks_empty": "Nenhum favorito",
+  "bookmarks_add": "Adicionar favorito"
 }

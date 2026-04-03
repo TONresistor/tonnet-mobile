@@ -34,5 +34,9 @@
   "logs_loading": "加载中...",
   "logs_empty": "暂无日志，请先连接代理。",
   "about": "关于",
-  "about_desc": "去中心化 TON 浏览器"
+  "about_desc": "去中心化 TON 浏览器",
+  "bookmarks": "书签",
+  "bookmarks_desc": "管理已保存的网站",
+  "bookmarks_empty": "暂无书签",
+  "bookmarks_add": "添加书签"
 }

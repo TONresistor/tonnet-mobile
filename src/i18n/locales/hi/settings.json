@@ -34,5 +34,9 @@
   "logs_loading": "लोड हो रहा है...",
   "logs_empty": "कोई log नहीं। पहले proxy से कनेक्ट करें।",
   "about": "के बारे में",
-  "about_desc": "विकेंद्रीकृत TON ब्राउज़र"
+  "about_desc": "विकेंद्रीकृत TON ब्राउज़र",
+  "bookmarks": "बुकमार्क",
+  "bookmarks_desc": "सहेजी गई साइटें प्रबंधित करें",
+  "bookmarks_empty": "कोई बुकमार्क नहीं",
+  "bookmarks_add": "बुकमार्क जोड़ें"
 }

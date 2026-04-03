@@ -81,6 +81,35 @@ function App() {
     }
   }, [isLoaded, autoConnect, proxyStatus, connect])
 
+  // Handle Android back button/gesture
+  useEffect(() => {
+    if (!platform.isAndroid) return
+
+    let backSub: { remove: () => void } | null = null
+
+    CapacitorApp.addListener('backButton', () => {
+      const proxy = useProxyStore.getState()
+
+      // Block back entirely while connecting
+      if (proxy.status === 'connecting') return
+
+      // If we can go back in navigation history, do that
+      if (canGoBack) {
+        goBack()
+        return
+      }
+
+      // Otherwise minimize the app (don't close it)
+      CapacitorApp.minimizeApp()
+    }).then((sub) => {
+      backSub = sub
+    })
+
+    return () => {
+      backSub?.remove()
+    }
+  }, [canGoBack, goBack])
+
   // Clear browsing data when app goes to background (if clearOnExit is enabled)
   const clearOnExitRef = useRef(clearOnExit)
   clearOnExitRef.current = clearOnExit

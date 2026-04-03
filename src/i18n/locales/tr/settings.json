@@ -34,5 +34,9 @@
   "logs_loading": "Yükleniyor...",
   "logs_empty": "Günlük yok. Önce proxy'e bağlanın.",
   "about": "Hakkında",
-  "about_desc": "Merkeziyetsiz TON tarayıcısı"
+  "about_desc": "Merkeziyetsiz TON tarayıcısı",
+  "bookmarks": "Yer İmleri",
+  "bookmarks_desc": "Kayıtlı siteleri yönet",
+  "bookmarks_empty": "Yer imi yok",
+  "bookmarks_add": "Yer imi ekle"
 }

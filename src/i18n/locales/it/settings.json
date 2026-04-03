@@ -34,5 +34,9 @@
   "logs_loading": "Caricamento...",
   "logs_empty": "Nessun log. Connettiti prima al proxy.",
   "about": "Informazioni",
-  "about_desc": "Browser TON decentralizzato"
+  "about_desc": "Browser TON decentralizzato",
+  "bookmarks": "Segnalibri",
+  "bookmarks_desc": "Gestisci i siti salvati",
+  "bookmarks_empty": "Nessun segnalibro",
+  "bookmarks_add": "Aggiungi segnalibro"
 }

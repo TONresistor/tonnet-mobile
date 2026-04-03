@@ -59,19 +59,19 @@ export function LandingPage() {
       <img
         src={isConnecting ? loadingGif : welcomeGif}
         alt="TON"
-        className="w-[200px] h-[200px] mb-8 transition-opacity duration-300"
+        className="w-[140px] h-[140px] mb-6 transition-opacity duration-300"
       />
 
-      <h1 className="text-[42px] font-bold text-foreground mb-3">{t('title')}</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-2">{t('title')}</h1>
 
-      <p className="text-muted-foreground text-xl mb-8">{t('subtitle')}</p>
+      <p className="text-muted-foreground text-base mb-8 px-4 text-center">{t('subtitle')}</p>
 
       {/* Connect Button */}
       <button
         onClick={() => connect()}
         disabled={isConnecting}
         className={`
-          relative text-primary-foreground text-xl font-medium px-16 py-5 rounded-full min-w-[340px]
+          relative text-primary-foreground text-base font-medium px-10 py-4 rounded-full min-w-[280px]
           transition-all duration-300 transform
           ${isConnecting
             ? 'gradient-primary opacity-80 cursor-not-allowed'
@@ -81,8 +81,8 @@ export function LandingPage() {
         `}
       >
         {isConnecting ? (
-          <div className="flex items-center justify-center gap-3">
-            <Loader2 className="w-6 h-6 text-primary-foreground animate-spin" />
+          <div className="flex items-center justify-center gap-2">
+            <Loader2 className="w-5 h-5 text-primary-foreground animate-spin" />
             <span>{stepMessage || t('connecting')}</span>
           </div>
         ) : (
@@ -91,7 +91,7 @@ export function LandingPage() {
       </button>
 
       {/* Progress Section */}
-      <div className={`mt-8 w-[340px] transition-opacity duration-300 ${(isConnecting || error) ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`mt-6 w-[280px] transition-opacity duration-300 ${(isConnecting || error) ? 'opacity-100' : 'opacity-0'}`}>
         {/* Progress Bar */}
         <div className="h-1.5 bg-foreground/10 rounded-full overflow-hidden mb-4">
           <div

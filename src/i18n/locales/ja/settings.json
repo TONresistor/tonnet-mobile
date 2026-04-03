@@ -34,5 +34,9 @@
   "logs_loading": "読み込み中...",
   "logs_empty": "ログなし。先にプロキシに接続してください。",
   "about": "このアプリについて",
-  "about_desc": "分散型TONブラウザ"
+  "about_desc": "分散型TONブラウザ",
+  "bookmarks": "ブックマーク",
+  "bookmarks_desc": "保存したサイトを管理",
+  "bookmarks_empty": "ブックマークはありません",
+  "bookmarks_add": "ブックマークを追加"
 }

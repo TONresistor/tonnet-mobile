@@ -9,6 +9,11 @@ import {
   ChevronRight,
   X,
   RefreshCw,
+  Globe,
+  Pencil,
+  Trash2,
+  Check,
+  Plus,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { SUPPORTED_LANGUAGES } from '@/i18n'
@@ -105,6 +110,14 @@ function LanguageIcon({ className }: { className?: string }) {
   )
 }
 
+function BookmarkIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none">
+      <path d="M5 5C5 3.89543 5.89543 3 7 3H17C18.1046 3 19 3.89543 19 5V21L12 17.5L5 21V5Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
+
 type EditingField = 'proxyPort' | 'homepage' | null
 
 export function SettingsPage() {
@@ -119,10 +132,17 @@ export function SettingsPage() {
   const [editingField, setEditingField] = useState<EditingField>(null)
   const [editValue, setEditValue] = useState('')
   const [showLanguageSheet, setShowLanguageSheet] = useState(false)
+  const [showBookmarksSheet, setShowBookmarksSheet] = useState(false)
+  const [editingBookmarkId, setEditingBookmarkId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editUrl, setEditUrl] = useState('')
+  const [addingBookmark, setAddingBookmark] = useState(false)
+  const [newTitle, setNewTitle] = useState('')
+  const [newUrl, setNewUrl] = useState('')
 
   const { draft } = usePreferencesStore()
   const { status, disconnect, connect } = useProxyStore()
-  const { resetBookmarks } = useBookmarksStore()
+  const { bookmarks, resetBookmarks, addBookmark, removeBookmark, updateBookmark } = useBookmarksStore()
   const isConnected = status === 'connected'
 
   const fetchLogs = async () => {
@@ -292,6 +312,19 @@ export function SettingsPage() {
               </div>
             }
           />
+          <SettingsItem
+            icon={BookmarkIcon}
+            iconBg="bg-purple-500"
+            label={t('bookmarks')}
+            description={t('bookmarks_desc', { count: bookmarks.length })}
+            onClick={() => setShowBookmarksSheet(true)}
+            right={
+              <div className="flex items-center gap-1">
+                <span className="text-[13px] text-muted-foreground">{bookmarks.length}</span>
+                <ChevronRight className="h-5 w-5 text-muted-foreground/60" />
+              </div>
+            }
+          />
         </SectionGroup>
 
         {/* Privacy */}
@@ -451,6 +484,142 @@ export function SettingsPage() {
               )}
             </button>
           ))}
+        </div>
+      </BottomSheet>
+
+      {/* Bookmarks Management Sheet */}
+      <BottomSheet
+        open={showBookmarksSheet}
+        onClose={() => {
+          setShowBookmarksSheet(false)
+          setEditingBookmarkId(null)
+          setAddingBookmark(false)
+        }}
+        title={t('bookmarks')}
+        showHandle
+        showCloseButton={false}
+        maxHeight="70vh"
+      >
+        <div className="space-y-1">
+          {bookmarks.length === 0 && !addingBookmark && (
+            <p className="text-muted-foreground text-center py-8 text-[13px]">{t('bookmarks_empty')}</p>
+          )}
+          {bookmarks.map((bm) => (
+            <div key={bm.id} className="px-2">
+              {editingBookmarkId === bm.id ? (
+                <div className="bg-background-secondary rounded-lg p-3 space-y-2">
+                  <input
+                    className="w-full bg-background rounded-lg px-3 py-2 text-sm text-foreground outline-none border border-border"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder={tc('title')}
+                  />
+                  <input
+                    className="w-full bg-background rounded-lg px-3 py-2 text-sm text-foreground outline-none border border-border"
+                    value={editUrl}
+                    onChange={(e) => setEditUrl(e.target.value)}
+                    placeholder="URL"
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      onClick={() => setEditingBookmarkId(null)}
+                      className="p-2 rounded-lg text-muted-foreground active:bg-muted/50"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (editTitle.trim() && editUrl.trim()) {
+                          updateBookmark(bm.id, { title: editTitle.trim(), url: editUrl.trim() })
+                          setEditingBookmarkId(null)
+                        }
+                      }}
+                      className="p-2 rounded-lg text-primary active:bg-primary/10"
+                    >
+                      <Check className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 px-2 py-2.5 rounded-xl active:bg-muted/50 transition-colors">
+                  {bm.favicon ? (
+                    <img src={bm.favicon} className="w-5 h-5 rounded shrink-0" alt="" />
+                  ) : (
+                    <Globe className="w-5 h-5 text-muted-foreground shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{bm.title}</p>
+                    <p className="text-[12px] text-muted-foreground truncate">{bm.url}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingBookmarkId(bm.id)
+                      setEditTitle(bm.title)
+                      setEditUrl(bm.url)
+                    }}
+                    className="p-2 rounded-lg text-muted-foreground active:bg-muted/50 shrink-0"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => removeBookmark(bm.id)}
+                    className="p-2 rounded-lg text-red-400 active:bg-red-500/10 shrink-0"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {addingBookmark ? (
+            <div className="px-2">
+              <div className="bg-background-secondary rounded-lg p-3 space-y-2">
+                <input
+                  className="w-full bg-background rounded-lg px-3 py-2 text-sm text-foreground outline-none border border-border"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  placeholder={tc('title')}
+                  autoFocus
+                />
+                <input
+                  className="w-full bg-background rounded-lg px-3 py-2 text-sm text-foreground outline-none border border-border"
+                  value={newUrl}
+                  onChange={(e) => setNewUrl(e.target.value)}
+                  placeholder="URL"
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => { setAddingBookmark(false); setNewTitle(''); setNewUrl('') }}
+                    className="p-2 rounded-lg text-muted-foreground active:bg-muted/50"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (newTitle.trim() && newUrl.trim()) {
+                        addBookmark(newUrl.trim(), newTitle.trim())
+                        setAddingBookmark(false)
+                        setNewTitle('')
+                        setNewUrl('')
+                      }
+                    }}
+                    className="p-2 rounded-lg text-primary active:bg-primary/10"
+                  >
+                    <Check className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAddingBookmark(true)}
+              className="w-full flex items-center gap-2 px-4 py-3 rounded-xl text-primary active:bg-primary/10 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="text-sm font-medium">{t('bookmarks_add')}</span>
+            </button>
+          )}
         </div>
       </BottomSheet>
 

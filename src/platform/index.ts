@@ -104,13 +104,34 @@ const proxyApi = {
       emitEvent('proxy:progress', { step: 0, message: anonymous ? 'Initializing tunnel...' : 'Starting proxy...' })
 
       try {
-        let timedOut = false
-        const timeout = new Promise<{ success: false; port: 0 }>((resolve) =>
-          setTimeout(() => { timedOut = true; resolve({ success: false, port: 0 }) }, 120000)
-        )
-        const result = await Promise.race([TonProxy.start({ port, anonymous }), timeout])
-        if (timedOut) {
-          TonProxy.stop().catch(() => {})
+        const maxRetries = anonymous ? 3 : 1
+        let result: { success: boolean; port: number } = { success: false, port: 0 }
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          if (attempt > 1) {
+            emitEvent('proxy:progress', { step: 0, message: `Retrying tunnel discovery (${attempt}/${maxRetries})...` })
+            await new Promise(r => setTimeout(r, 3000))
+          }
+
+          try {
+            let timedOut = false
+            const timeout = new Promise<{ success: false; port: 0 }>((resolve) =>
+              setTimeout(() => { timedOut = true; resolve({ success: false, port: 0 }) }, 120000)
+            )
+            result = await Promise.race([TonProxy.start({ port, anonymous }), timeout])
+            if (timedOut) {
+              TonProxy.stop().catch(() => {})
+            }
+
+            if (result.success) break
+          } catch {
+            // Native call rejected (e.g. DHT discovery failed) — retry if attempts remain
+          }
+
+          if (attempt < maxRetries) continue
+
+          emitEvent('proxy:progress', { step: -1, message: 'Failed to start proxy' })
+          return { success: false, port: 0 }
         }
 
         if (!result.success) {

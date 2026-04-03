@@ -34,5 +34,9 @@
   "logs_loading": "Đang tải...",
   "logs_empty": "Chưa có nhật ký. Hãy kết nối proxy trước.",
   "about": "Giới thiệu",
-  "about_desc": "Trình duyệt TON phi tập trung"
+  "about_desc": "Trình duyệt TON phi tập trung",
+  "bookmarks": "Dấu trang",
+  "bookmarks_desc": "Quản lý trang đã lưu",
+  "bookmarks_empty": "Chưa có dấu trang",
+  "bookmarks_add": "Thêm dấu trang"
 }

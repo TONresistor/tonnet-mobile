@@ -96,6 +96,20 @@ public class TonProxyPlugin extends Plugin {
     private static native String StopProxy();
 
     /**
+     * Stop the native proxy from outside the plugin (e.g. Activity.onDestroy).
+     * Prevents zombie Go processes when the app is killed.
+     */
+    public static void stopNativeProxy() {
+        if (!libraryLoaded) return;
+        try {
+            StopProxy();
+            addToBuffer("[Java] Proxy stopped via stopNativeProxy()");
+        } catch (Exception e) {
+            addToBuffer("[Java][ERROR] stopNativeProxy failed: " + e.getMessage());
+        }
+    }
+
+    /**
      * Generate a JSON array of 32 random unsigned bytes (0-255).
      */
     private static JSONArray generateKeyArray(SecureRandom rng) throws Exception {
