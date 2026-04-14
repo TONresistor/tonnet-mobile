@@ -108,9 +108,12 @@ export const useSettingsStore = create<SettingsState>()(
           if (!activeTab) return
 
           
-          // Don't navigate to the same URL
           if (url === activeTab.url) {
-                        return
+            const targetView = getViewFromUrl(url)
+            if (state.activeView !== targetView) {
+              set({ activeView: targetView })
+            }
+            return
           }
 
           const activeView = getViewFromUrl(url)
