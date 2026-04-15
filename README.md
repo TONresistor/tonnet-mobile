@@ -34,8 +34,8 @@ Anonymous mode routes traffic through a 3-hop garlic circuit via ADNL tunnel. Re
 
 | Stable | Pre-release |
 |:------:|:-----------:|
-| v1.0 | v1.1.0-beta01 |
-| [![Stable](https://img.shields.io/badge/Download_APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/TONresistor/tonnet-mobile/releases/latest) | [![Beta](https://img.shields.io/badge/Download_Beta-FF9800?style=for-the-badge&logo=android&logoColor=white)](https://github.com/TONresistor/tonnet-mobile/releases/tag/v1.1.0-beta01) |
+| v1.0 | v1.1.0-beta02 |
+| [![Stable](https://img.shields.io/badge/Download_APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/TONresistor/tonnet-mobile/releases/latest) | [![Beta](https://img.shields.io/badge/Download_Beta-FF9800?style=for-the-badge&logo=android&logoColor=white)](https://github.com/TONresistor/tonnet-mobile/releases/tag/v1.1.0-beta02) |
 
 Enable "Install from unknown sources", then install. Requires Android 9.0+ (API 28).
 
