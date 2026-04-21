@@ -1,0 +1,17 @@
+Native Android browser for the TON Network. Browse .ton sites directly or anonymously through a 3-hop encrypted tunnel.
+
+Anonymous mode routes traffic through a 3-hop garlic circuit via ADNL tunnel. Relay nodes are discovered from the TON DHT. Outbound and inbound paths use independent circuits. Payload is encrypted end-to-end between your device and the exit gateway.
+
+Features:
+- .ton, .adnl and .t.me domain browsing
+- Anonymous mode: 3-hop ADNL tunnel, garlic routing, relay discovery via TON DHT
+- End-to-end encrypted payload, automatic circuit rerouting
+- Third-party cookies blocked by default
+- Tracker domain blocking
+- Referer/Origin stripping
+- JavaScript toggle, GPC/DNT headers
+- No Google Safe Browsing (privacy by design)
+
+Requires Android 9.0+ (API 28).
+
+Note: cleartext HTTP is permitted only for localhost and .ton/.adnl domains (required for the local tonutils-proxy server). Depends on the public TON mainnet.

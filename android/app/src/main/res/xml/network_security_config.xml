@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Allow cleartext (HTTP) traffic globally since TON sites use HTTP through local proxy -->
-    <base-config cleartextTrafficPermitted="true">
+    <!-- Block all cleartext (HTTP) traffic by default.
+         External clearnet must use HTTPS; unsecure HTTP links are blocked. -->
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    <!-- Explicitly allow cleartext for local proxy and TON domains -->
+    <!-- Scoped exception: the local tonutils-proxy and TON domains it serves are HTTP-only.
+         Encryption for .ton/.adnl traffic is handled end-to-end by the ADNL tunnel,
+         below the WebView transport layer. -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">127.0.0.1</domain>

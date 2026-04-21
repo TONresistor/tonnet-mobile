@@ -64,7 +64,7 @@ public class MainActivity extends BridgeActivity {
             // Require user gesture to start media playback
             settings.setMediaPlaybackRequiresUserGesture(true);
 
-            settings.setSafeBrowsingEnabled(true);
+            settings.setSafeBrowsingEnabled(false);
 
             // Block third-party cookies
             android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
