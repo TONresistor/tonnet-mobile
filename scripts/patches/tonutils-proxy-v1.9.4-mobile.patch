@@ -1,0 +1,225 @@
+diff --git a/cmd/lib/main.go b/cmd/lib/main.go
+index 0bcd2e3..edb2e95 100644
+--- a/cmd/lib/main.go
++++ b/cmd/lib/main.go
+@@ -5,27 +5,57 @@ import (
+ 	"context"
+ 	"encoding/json"
+ 	"fmt"
++	"log"
++	"sync"
++	"time"
++
+ 	"github.com/xssnick/tonutils-go/liteclient"
+ 	"github.com/xssnick/tonutils-proxy/cmd/proxy-cli/config"
+ 	"github.com/xssnick/tonutils-proxy/proxy"
+-	"log"
+ )
+ 
+ var GitCommit string
+ 
++const proxyStopTimeout = 10 * time.Second
++
+ func main() {}
+ 
+-var ActiveProxy context.Context
+-var ProxyStopper context.CancelFunc
++var (
++	proxyMu      sync.Mutex
++	activeProxy  context.Context
++	proxyStopper context.CancelFunc
++	proxyDone    <-chan struct{}
++	startToken   uint64
++)
+ 
+ func init() {
+-	ActiveProxy, ProxyStopper = context.WithCancel(context.Background())
+-	ProxyStopper() // mark it not started
++	activeProxy, proxyStopper = context.WithCancel(context.Background())
++	proxyStopper() // mark it not started
++	stopped := make(chan struct{})
++	close(stopped)
++	proxyDone = stopped
++}
++
++func reserveProxyStart() uint64 {
++	proxyMu.Lock()
++	defer proxyMu.Unlock()
++	startToken++
++	return startToken
++}
++
++//export ReserveProxyStart
++func ReserveProxyStart() C.ulonglong {
++	return C.ulonglong(reserveProxyStart())
+ }
+ 
+ //export StartProxy
+ func StartProxy(port C.ushort) *C.char {
+-	return C.CString(startProxy(uint16(port), nil))
++	return C.CString(startProxy(uint16(port), nil, reserveProxyStart()))
++}
++
++//export StartProxyReserved
++func StartProxyReserved(port C.ushort, token C.ulonglong) *C.char {
++	return C.CString(startProxy(uint16(port), nil, uint64(token)))
+ }
+ 
+ //export StartProxyWithConfig
+@@ -36,27 +66,71 @@ func StartProxyWithConfig(port C.ushort, configTextJSON *C.char) *C.char {
+ 		return C.CString("PARSE_CONFIG_ERR: " + err.Error())
+ 	}
+ 
+-	return C.CString(startProxy(uint16(port), &cfg))
++	return C.CString(startProxy(uint16(port), &cfg, reserveProxyStart()))
+ }
+ 
+ //export StopProxy
+ func StopProxy() *C.char {
+-	ProxyStopper()
+-	return C.CString("OK")
++	proxyMu.Lock()
++	startToken++
++	proxyStopper()
++	done := proxyDone
++	proxyMu.Unlock()
++
++	select {
++	case <-done:
++		return C.CString("OK")
++	case <-time.After(proxyStopTimeout):
++		return C.CString("TIMEOUT")
++	}
++}
++
++//export IsProxyActive
++func IsProxyActive() C.int {
++	proxyMu.Lock()
++	done := proxyDone
++	proxyMu.Unlock()
++
++	select {
++	case <-done:
++		return 0
++	default:
++		return 1
++	}
+ }
+ 
+-func startProxy(port uint16, netCfg *liteclient.GlobalConfig) string {
++func startProxy(port uint16, netCfg *liteclient.GlobalConfig, token uint64) string {
++	proxyMu.Lock()
++	if token != startToken {
++		proxyMu.Unlock()
++		return "CANCELLED"
++	}
++
+ 	select {
+-	case <-ActiveProxy.Done():
++	case <-proxyDone:
++		proxyStopper()
+ 	default:
+-		return "ALREADY_STARTED"
++		select {
++		case <-activeProxy.Done():
++			proxyMu.Unlock()
++			return "STOPPING"
++		default:
++			proxyMu.Unlock()
++			return "ALREADY_STARTED"
++		}
+ 	}
+ 
+-	ActiveProxy, ProxyStopper = context.WithCancel(context.Background())
++	ctx, cancel := context.WithCancel(context.Background())
++	done := make(chan struct{})
++	activeProxy, proxyStopper = ctx, cancel
++	proxyDone = done
++	proxyMu.Unlock()
+ 
+ 	// Load config.json from CWD (same as CLI)
+ 	cfg, err := config.LoadConfig("./")
+ 	if err != nil {
++		cancel()
++		close(done)
+ 		log.Println("failed to load config:", err.Error())
+ 		return "ERR: " + err.Error()
+ 	}
+@@ -83,40 +157,60 @@ func startProxy(port uint16, netCfg *liteclient.GlobalConfig) string {
+ 		}
+ 	}
+ 
++	select {
++	case <-ctx.Done():
++		close(done)
++		return "CANCELLED"
++	default:
++	}
++
+ 	var ch = make(chan proxy.State, 1)
+ 	go func() {
++		defer close(done)
++		var runErr error
+ 		if netCfg != nil {
+-			err = proxy.RunProxyWithConfig(ActiveProxy, "127.0.0.1:"+fmt.Sprint(port), cfg.ADNLKey, ch, false, "LIB "+GitCommit, netCfg, cfg.TunnelConfig, customTunNetCfg, multiChainCfg)
++			runErr = proxy.RunProxyWithConfig(ctx, "127.0.0.1:"+fmt.Sprint(port), cfg.ADNLKey, ch, false, "LIB "+GitCommit, netCfg, cfg.TunnelConfig, customTunNetCfg, multiChainCfg)
+ 		} else {
+-			err = proxy.RunProxy(ActiveProxy, "127.0.0.1:"+fmt.Sprint(port), cfg.ADNLKey, ch, "LIB "+GitCommit, false, "", cfg.TunnelConfig, customTunNetCfg, multiChainCfg)
++			runErr = proxy.RunProxy(ctx, "127.0.0.1:"+fmt.Sprint(port), cfg.ADNLKey, ch, "LIB "+GitCommit, false, "", cfg.TunnelConfig, customTunNetCfg, multiChainCfg)
+ 		}
+-		if err != nil {
+-			log.Println("failed to start proxy:", err.Error())
+-			ch <- proxy.State{Type: "error", State: err.Error(), Stopped: true}
++		if runErr != nil {
++			log.Println("failed to start proxy:", runErr.Error())
++			select {
++			case ch <- proxy.State{Type: "error", State: runErr.Error(), Stopped: true}:
++			default:
++			}
+ 		}
+ 	}()
+ 
+ 	var res = make(chan string, 1)
+ 	go func() {
++		ctxDone := ctx.Done()
++		reported := false
++		report := func(result string) {
++			if reported {
++				return
++			}
++			res <- result
++			reported = true
++		}
++
+ 		for {
+ 			select {
+-			case <-ActiveProxy.Done():
+-				return
++			case <-ctxDone:
++				report("CANCELLED")
++				ctxDone = nil
+ 			case state := <-ch:
+ 				if state.Stopped {
+-					ProxyStopper()
+-					select {
+-					case res <- "ERR: " + state.State:
+-					default:
+-					}
+-					return
++					cancel()
++					report("ERR: " + state.State)
+ 				} else if state.Type == "ready" {
+-					select {
+-					case res <- "OK":
+-					default:
+-					}
++					report("OK")
+ 				}
+ 				// "loading" states are ignored — keep waiting
++			case <-done:
++				cancel()
++				report("ERR: proxy stopped")
++				return
+ 			}
+ 		}
+ 	}()

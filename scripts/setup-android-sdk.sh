@@ -5,10 +5,10 @@
 # This script installs Android SDK command-line tools and required components
 # without requiring Android Studio.
 #
-# Based on 2025 best practices:
-# - Uses ANDROID_SDK_ROOT (with ANDROID_HOME fallback for compatibility)
+# Build baseline:
+# - Uses ANDROID_HOME (with ANDROID_SDK_ROOT compatibility)
 # - Correct cmdline-tools/latest directory structure
-# - NDK 27.x for gomobile and React Native New Architecture compatibility
+# - Android SDK 36, NDK 27.1, and Java 21
 #
 # Usage:
 #   ./scripts/setup-android-sdk.sh [options]
@@ -26,7 +26,7 @@
 #   - https://developer.android.com/tools/sdkmanager
 #
 
-set -e
+set -Eeuo pipefail
 
 # =============================================================================
 # Configuration
@@ -42,8 +42,9 @@ NC='\033[0m'
 # Default values
 DEFAULT_SDK_ROOT="$HOME/Android/Sdk"
 DEFAULT_NDK_VERSION="27.1.12297006"
-DEFAULT_BUILD_TOOLS_VERSION="35.0.0"
-DEFAULT_PLATFORM_VERSION="35"
+DEFAULT_CMAKE_VERSION="3.18.1"
+DEFAULT_BUILD_TOOLS_VERSION="36.0.0"
+DEFAULT_PLATFORM_VERSION="36"
 
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -51,8 +52,13 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Command-line tools download URL (updated regularly by Google)
 # Check https://developer.android.com/studio#command-tools for latest version
-CMDLINE_TOOLS_VERSION="13114758"  # Latest as of December 2025
-CMDLINE_TOOLS_URL="https://dl.google.com/android/repository/commandlinetools-linux-${CMDLINE_TOOLS_VERSION}_latest.zip"
+readonly CMDLINE_TOOLS_VERSION="13114758"
+readonly CMDLINE_TOOLS_LINUX_SHA256="7ec965280a073311c339e571cd5de778b9975026cfcbe79f2b1cdcb1e15317ee"
+readonly CMDLINE_TOOLS_MAC_SHA256="5673201e6f3869f418eeed3b5cb6c4be7401502bd0aae1b12a29d164d647a54e"
+readonly CMDLINE_TOOLS_WIN_SHA256="98b565cb657b012dae6794cefc0f66ae1efb4690c699b78a614b4a6a3505b003"
+CMDLINE_TOOLS_URL=""
+CMDLINE_TOOLS_SHA256=""
+DOWNLOAD_TEMP_DIR=""
 
 # Options
 SDK_ROOT="$DEFAULT_SDK_ROOT"
@@ -60,6 +66,14 @@ NDK_VERSION="$DEFAULT_NDK_VERSION"
 SKIP_NDK=false
 SKIP_EMULATOR=false
 MINIMAL=false
+
+cleanup_download() {
+    if [[ -n "$DOWNLOAD_TEMP_DIR" && -d "$DOWNLOAD_TEMP_DIR" ]]; then
+        rm -rf -- "$DOWNLOAD_TEMP_DIR"
+    fi
+}
+
+trap cleanup_download EXIT
 
 # =============================================================================
 # Functions
@@ -117,8 +131,8 @@ Examples:
     $0 --ndk-version 26.3.11579264
 
 Environment Variables (set after installation):
-    ANDROID_SDK_ROOT   Primary Android SDK path (2025 standard)
-    ANDROID_HOME       Legacy SDK path (for compatibility)
+    ANDROID_HOME       Canonical Android SDK path
+    ANDROID_SDK_ROOT   Compatibility alias for the SDK path
     ANDROID_NDK_HOME   Path to NDK installation
 
 After installation, run:
@@ -134,18 +148,22 @@ check_dependencies() {
     local missing=()
 
     # Required tools
-    if ! command -v curl &> /dev/null && ! command -v wget &> /dev/null; then
-        missing+=("curl or wget")
+    if ! command -v curl &> /dev/null; then
+        missing+=("curl")
     fi
 
     if ! command -v unzip &> /dev/null; then
         missing+=("unzip")
     fi
 
+    if ! command -v sha256sum &> /dev/null && ! command -v shasum &> /dev/null; then
+        missing+=("sha256sum or shasum")
+    fi
+
     if ! command -v java &> /dev/null; then
-        print_warning "Java not found. JDK 17+ is required for Android development."
-        print_warning "Install with: sudo dnf install java-17-openjdk-devel (Fedora)"
-        print_warning "           or: sudo apt install openjdk-17-jdk (Ubuntu/Debian)"
+        print_warning "Java not found. JDK 21+ is required for Android development."
+        print_warning "Install with: sudo dnf install java-21-openjdk-devel (Fedora)"
+        print_warning "           or: sudo apt install openjdk-21-jdk (Ubuntu/Debian)"
     else
         JAVA_VERSION=$(java -version 2>&1 | head -n 1)
         echo "  Java: $JAVA_VERSION"
@@ -172,20 +190,23 @@ detect_platform() {
     case "$(uname -s)" in
         Linux*)
             PLATFORM="linux"
+            CMDLINE_TOOLS_SHA256="$CMDLINE_TOOLS_LINUX_SHA256"
             ;;
         Darwin*)
             PLATFORM="mac"
-            CMDLINE_TOOLS_URL="https://dl.google.com/android/repository/commandlinetools-mac-${CMDLINE_TOOLS_VERSION}_latest.zip"
+            CMDLINE_TOOLS_SHA256="$CMDLINE_TOOLS_MAC_SHA256"
             ;;
         MINGW*|CYGWIN*|MSYS*)
             PLATFORM="win"
-            CMDLINE_TOOLS_URL="https://dl.google.com/android/repository/commandlinetools-win-${CMDLINE_TOOLS_VERSION}_latest.zip"
+            CMDLINE_TOOLS_SHA256="$CMDLINE_TOOLS_WIN_SHA256"
             ;;
         *)
             print_error "Unsupported platform: $(uname -s)"
             exit 1
             ;;
     esac
+
+    CMDLINE_TOOLS_URL="https://dl.google.com/android/repository/commandlinetools-${PLATFORM}-${CMDLINE_TOOLS_VERSION}_latest.zip"
 
     echo "  Platform: $PLATFORM"
     echo "  Architecture: $(uname -m)"
@@ -197,18 +218,27 @@ download_cmdline_tools() {
 
     print_step "Downloading Android command-line tools..." >&2
 
-    DOWNLOAD_TEMP_DIR="/tmp/android-sdk-setup-$$"
+    DOWNLOAD_TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/tonnet-android-sdk.XXXXXX")"
     local zip_file="$DOWNLOAD_TEMP_DIR/cmdline-tools.zip"
+    local actual_sha256
 
-    mkdir -p "$DOWNLOAD_TEMP_DIR"
+    curl --fail --location --show-error --output "$zip_file" "$CMDLINE_TOOLS_URL"
 
-    if command -v curl &> /dev/null; then
-        curl -L -o "$zip_file" "$CMDLINE_TOOLS_URL" --progress-bar
+    if command -v sha256sum &> /dev/null; then
+        actual_sha256="$(sha256sum "$zip_file")"
+        actual_sha256="${actual_sha256%% *}"
     else
-        wget -O "$zip_file" "$CMDLINE_TOOLS_URL" --show-progress
+        actual_sha256="$(shasum -a 256 "$zip_file")"
+        actual_sha256="${actual_sha256%% *}"
     fi
 
-    echo "  Downloaded to: $zip_file" >&2
+    if [[ "$actual_sha256" != "$CMDLINE_TOOLS_SHA256" ]]; then
+        print_error "Command-line tools checksum mismatch"
+        printf '  Expected: %s\n  Actual:   %s\n' "$CMDLINE_TOOLS_SHA256" "$actual_sha256" >&2
+        exit 1
+    fi
+
+    echo "  Downloaded and verified: $zip_file" >&2
 }
 
 setup_sdk_directory() {
@@ -232,9 +262,6 @@ setup_sdk_directory() {
 
     # Move to correct location (cmdline-tools -> latest)
     mv "$temp_dir/cmdline-tools" "$SDK_ROOT/cmdline-tools/latest"
-
-    # Cleanup
-    rm -rf "$temp_dir"
 
     echo "  SDK root: $SDK_ROOT"
     echo "  cmdline-tools: $SDK_ROOT/cmdline-tools/latest"
@@ -269,6 +296,7 @@ install_sdk_components() {
         "platform-tools"
         "platforms;android-$DEFAULT_PLATFORM_VERSION"
         "build-tools;$DEFAULT_BUILD_TOOLS_VERSION"
+        "cmake;$DEFAULT_CMAKE_VERSION"
     )
 
     # NDK (unless skipped)
@@ -298,121 +326,18 @@ install_sdk_components() {
 }
 
 generate_env_file() {
-    print_step "Generating environment file..."
+    print_step "Generating local environment configuration..."
 
-    local env_file="$SCRIPT_DIR/env.sh"
+    local env_file="$SCRIPT_DIR/env.local.sh"
 
-    cat > "$env_file" << ENVFILE
-#!/bin/bash
-#
-# Android SDK Environment Variables for Tonnet Mobile
-#
-# Generated by setup-android-sdk.sh on $(date)
-#
-# Usage:
-#   source scripts/env.sh
-#
-# For permanent setup, add to your ~/.bashrc or ~/.zshrc:
-#   source /path/to/tonnet-mobile/scripts/env.sh
-#
+    {
+        printf '%s\n' '# Generated by scripts/setup-android-sdk.sh; do not commit.'
+        printf '%s\n' '# Source scripts/env.sh, which loads these machine-specific fallbacks.'
+        printf 'TONNET_ANDROID_SDK_ROOT=%q\n' "$SDK_ROOT"
+        printf 'TONNET_ANDROID_NDK_ROOT=%q\n' "$SDK_ROOT/ndk/$NDK_VERSION"
+    } > "$env_file"
 
-# =============================================================================
-# Android SDK Configuration (2025 Best Practices)
-# =============================================================================
-
-# Primary SDK path (2025 standard - replaces ANDROID_HOME)
-export ANDROID_SDK_ROOT="$SDK_ROOT"
-
-# Legacy SDK path (for compatibility with older tools like Cordova, some CI systems)
-# Many tools still check ANDROID_HOME first, so we set both
-export ANDROID_HOME="\$ANDROID_SDK_ROOT"
-
-# NDK path (required for gomobile, React Native with C++ code)
-export ANDROID_NDK_HOME="\$ANDROID_SDK_ROOT/ndk/$NDK_VERSION"
-
-# Alternative NDK variable (some tools use this)
-export NDK_HOME="\$ANDROID_NDK_HOME"
-
-# =============================================================================
-# PATH Configuration
-# =============================================================================
-
-# Add SDK tools to PATH (order matters - more specific first)
-# cmdline-tools: sdkmanager, avdmanager, etc.
-export PATH="\$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:\$PATH"
-
-# platform-tools: adb, fastboot
-export PATH="\$ANDROID_SDK_ROOT/platform-tools:\$PATH"
-
-# emulator
-export PATH="\$ANDROID_SDK_ROOT/emulator:\$PATH"
-
-# build-tools (for aapt, zipalign, etc.)
-export PATH="\$ANDROID_SDK_ROOT/build-tools/$DEFAULT_BUILD_TOOLS_VERSION:\$PATH"
-
-# =============================================================================
-# Go/gomobile Configuration
-# =============================================================================
-
-# Ensure Go binaries are in PATH (for gomobile)
-if command -v go &> /dev/null; then
-    export PATH="\$PATH:\$(go env GOPATH)/bin"
-fi
-
-# =============================================================================
-# Java Configuration (optional - uncomment if needed)
-# =============================================================================
-
-# If you have multiple Java versions, set JAVA_HOME explicitly:
-# export JAVA_HOME="/usr/lib/jvm/java-17-openjdk"
-# export PATH="\$JAVA_HOME/bin:\$PATH"
-
-# =============================================================================
-# Verification Functions
-# =============================================================================
-
-# Function to verify Android SDK setup
-verify_android_sdk() {
-    echo "Android SDK Configuration:"
-    echo "  ANDROID_SDK_ROOT: \$ANDROID_SDK_ROOT"
-    echo "  ANDROID_HOME:     \$ANDROID_HOME"
-    echo "  ANDROID_NDK_HOME: \$ANDROID_NDK_HOME"
-    echo ""
-
-    if [ -d "\$ANDROID_SDK_ROOT" ]; then
-        echo "SDK Status: OK"
-    else
-        echo "SDK Status: NOT FOUND"
-        return 1
-    fi
-
-    if [ -d "\$ANDROID_NDK_HOME" ]; then
-        echo "NDK Status: OK"
-    else
-        echo "NDK Status: NOT FOUND (run: sdkmanager 'ndk;$NDK_VERSION')"
-    fi
-
-    echo ""
-    echo "Available tools:"
-    command -v sdkmanager &> /dev/null && echo "  sdkmanager: \$(which sdkmanager)"
-    command -v adb &> /dev/null && echo "  adb:        \$(which adb)"
-    command -v avdmanager &> /dev/null && echo "  avdmanager: \$(which avdmanager)"
-    command -v emulator &> /dev/null && echo "  emulator:   \$(which emulator)"
-}
-
-# Export the function for interactive use
-export -f verify_android_sdk 2>/dev/null || true
-
-# =============================================================================
-# Auto-verification (optional - comment out for faster shell startup)
-# =============================================================================
-
-# Uncomment to verify SDK on every source:
-# verify_android_sdk
-
-ENVFILE
-
-    chmod +x "$env_file"
+    chmod 600 "$env_file"
 
     echo "  Generated: $env_file"
     print_success "Environment file created"
@@ -481,6 +406,7 @@ show_summary() {
     echo "Installation details:"
     echo "  SDK root:      $SDK_ROOT"
     echo "  NDK version:   $NDK_VERSION"
+    echo "  CMake version: $DEFAULT_CMAKE_VERSION"
     echo "  Platform:      android-$DEFAULT_PLATFORM_VERSION"
     echo "  Build tools:   $DEFAULT_BUILD_TOOLS_VERSION"
     echo ""
@@ -488,15 +414,16 @@ show_summary() {
     echo "  $SDK_ROOT/"
 
     # Show actual directories created
-    for dir in cmdline-tools platform-tools platforms build-tools ndk emulator; do
+    for dir in cmdline-tools platform-tools platforms build-tools ndk cmake emulator; do
         if [ -d "$SDK_ROOT/$dir" ]; then
             echo "    [OK] $dir/"
         fi
     done
 
     echo ""
-    echo "Environment files created:"
-    echo "  scripts/env.sh          - Environment variables"
+    echo "Environment configuration:"
+    echo "  scripts/env.local.sh    - Local SDK paths (generated, ignored by Git)"
+    echo "  scripts/env.sh          - Shared environment loader"
     [ -f "$PROJECT_DIR/android/local.properties" ] && echo "  android/local.properties - Android project config"
     [ -f "$PROJECT_DIR/.envrc" ] && echo "  .envrc                   - direnv config (optional)"
 
@@ -516,9 +443,9 @@ show_summary() {
     echo ""
     echo "   echo 'source $SCRIPT_DIR/env.sh' >> ~/.bashrc"
     echo ""
-    echo "4. Build the Go libraries:"
+    echo "4. Build the native TON proxy:"
     echo ""
-    echo "   ./scripts/build-go-libs.sh"
+    echo "   ./scripts/build-ton-proxy.sh"
     echo ""
 
     print_success "Android SDK setup complete!"
@@ -533,10 +460,18 @@ main() {
     while [[ $# -gt 0 ]]; do
         case $1 in
             --sdk-root)
+                [[ $# -ge 2 ]] || {
+                    print_error "--sdk-root requires a path"
+                    exit 1
+                }
                 SDK_ROOT="$2"
                 shift 2
                 ;;
             --ndk-version)
+                [[ $# -ge 2 ]] || {
+                    print_error "--ndk-version requires a version"
+                    exit 1
+                }
                 NDK_VERSION="$2"
                 shift 2
                 ;;
@@ -569,6 +504,7 @@ main() {
     echo "Configuration:"
     echo "  SDK root:     $SDK_ROOT"
     echo "  NDK version:  $NDK_VERSION"
+    echo "  CMake version: $DEFAULT_CMAKE_VERSION"
     echo "  Skip NDK:     $SKIP_NDK"
     echo "  Skip emulator: $SKIP_EMULATOR"
     echo "  Minimal:      $MINIMAL"
@@ -578,9 +514,9 @@ main() {
     if [ -f "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
         print_warning "Android SDK already installed at $SDK_ROOT"
         echo ""
-        read -p "Do you want to continue and potentially reinstall? [y/N] " -n 1 -r
+        read -r -p "Do you want to continue and potentially reinstall? [y/N] " -n 1 REPLY
         echo ""
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        if [[ ! ${REPLY:-} =~ ^[Yy]$ ]]; then
             echo "Aborted."
             exit 0
         fi

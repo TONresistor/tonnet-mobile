@@ -16,7 +16,10 @@ android/app/*.iml
 android/capacitor-cordova-android-plugins/build/
 
 # Native libraries (built from TONresistor/Tonutils-Proxy releases)
-android/app/libs/jniLibs/
+android/app/libs/jniLibs/*
+!android/app/libs/jniLibs/arm64-v8a/
+android/app/libs/jniLibs/arm64-v8a/*
+!android/app/libs/jniLibs/arm64-v8a/.gitkeep
 
 # IDE
 .idea/
@@ -36,6 +39,8 @@ npm-debug.log*
 .env
 .env.local
 .env.*.local
+.envrc
+scripts/env.local.sh
 
 # Cache
 .cache/
@@ -48,9 +53,11 @@ coverage/
 *.tmp
 *.temp
 
-# Security reports (sensitive, not for VCS)
+# Security reports and signing material (sensitive, not for VCS)
 VULNS.md
 findings.md
+*.jks
+*.keystore
 
 # Obsidian
 .obsidian/
