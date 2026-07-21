@@ -6,20 +6,16 @@
 
 import { Globe, Home, Settings } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { BottomSheet } from './BottomSheet'
-import { cn } from '@/lib/utils'
 import { useTranslation } from 'react-i18next'
-
-interface Tab {
-  id: string
-  url: string
-  title: string
-}
+import { cn } from '@/lib/utils'
+import { INTERNAL_ROUTES } from '@/shared/constants'
+import type { BrowserTab } from '@/shared/types'
+import { BottomSheet } from './BottomSheet'
 
 interface TabsSheetProps {
   open: boolean
   onClose: () => void
-  tabs: Tab[]
+  tabs: BrowserTab[]
   activeTabId: string
   onSwitchTab: (tabId: string) => void
   onCloseTab: (tabId: string) => void
@@ -29,10 +25,10 @@ const SWIPE_THRESHOLD = 100
 
 // Get icon for tab based on URL
 function getTabIcon(url: string) {
-  if (url === 'ton://start' || url === 'ton://landing') {
+  if (url === INTERNAL_ROUTES.start || url === INTERNAL_ROUTES.landing) {
     return <Home className="h-4 w-4" />
   }
-  if (url === 'ton://settings') {
+  if (url === INTERNAL_ROUTES.settings) {
     return <Settings className="h-4 w-4" />
   }
   return <Globe className="h-4 w-4" />
@@ -45,7 +41,7 @@ function SwipeableTabItem({
   onSwitch,
   onDelete,
 }: {
-  tab: Tab
+  tab: BrowserTab
   isActive: boolean
   onSwitch: () => void
   onDelete: () => void
@@ -96,33 +92,30 @@ function SwipeableTabItem({
   }
 
   return (
-    <div
+    <button
+      type="button"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onClick={handleClick}
       style={{
         transform: `translateX(${swipeX}px)`,
-        transition: isSwiping.current ? 'none' : 'transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        transition: isSwiping.current
+          ? 'none'
+          : 'transform 250ms cubic-bezier(0.34, 1.56, 0.64, 1)',
         opacity: isDeleting ? 0 : 1,
       }}
       className={cn(
-        'flex items-center gap-3 p-3 rounded-xl cursor-pointer',
-        isActive
-          ? 'bg-[#2AABEE] text-white'
-          : 'bg-white/10 active:bg-white/20'
+        'w-full flex items-center gap-3 p-3 rounded-xl cursor-pointer',
+        isActive ? 'bg-[#2AABEE] text-white' : 'bg-white/10 active:bg-white/20',
       )}
     >
       {/* Tab Icon */}
-      <span className="flex-shrink-0 text-current">
-        {getTabIcon(tab.url)}
-      </span>
+      <span className="flex-shrink-0 text-current">{getTabIcon(tab.url)}</span>
 
       {/* Tab Title */}
-      <span className="flex-1 text-left truncate text-sm text-current">
-        {tab.title}
-      </span>
-    </div>
+      <span className="flex-1 text-left truncate text-sm text-current">{tab.title}</span>
+    </button>
   )
 }
 

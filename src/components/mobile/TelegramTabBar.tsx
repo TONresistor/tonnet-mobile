@@ -3,15 +3,16 @@
  * Pill-shaped glassmorphism container with icon + label tabs.
  */
 
-import { ChevronLeft, ChevronRight, Plus, Layers, Settings } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { ChevronLeft, ChevronRight, Layers, Plus, Settings } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/lib/utils'
+import type { ActiveView } from '@/shared/types'
 
 interface TelegramTabBarProps {
   canGoBack: boolean
   canGoForward: boolean
   tabCount: number
-  activeView: string
+  activeView: ActiveView
   onBack: () => void
   onForward: () => void
   onNewTab: () => void
@@ -103,6 +104,7 @@ function TabButton({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
@@ -112,17 +114,21 @@ function TabButton({
         active && 'bg-[var(--muted)]',
       )}
     >
-      <div className={cn(
-        'transition-colors',
-        active ? 'text-primary' : disabled ? 'text-white/30' : 'text-white'
-      )}>
+      <div
+        className={cn(
+          'transition-colors',
+          active ? 'text-primary' : disabled ? 'text-white/30' : 'text-white',
+        )}
+      >
         {icon}
       </div>
-      <span className={cn(
-        'text-[10px] leading-[12px] tracking-tight',
-        active ? 'font-bold text-primary' : 'font-medium text-white',
-        disabled && 'text-white/30'
-      )}>
+      <span
+        className={cn(
+          'text-[10px] leading-[12px] tracking-tight',
+          active ? 'font-bold text-primary' : 'font-medium text-white',
+          disabled && 'text-white/30',
+        )}
+      >
         {label}
       </span>
     </button>

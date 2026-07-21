@@ -1,7 +1,3 @@
-/**
- * Shared types.
- */
-
 export interface Bookmark {
   id: string
   url: string
@@ -10,5 +6,14 @@ export interface Bookmark {
   createdAt: number
 }
 
-/** Connection status type for hooks */
+export type ActiveView = 'start' | 'web' | 'settings' | 'landing'
+
+export interface BrowserTab {
+  id: string
+  url: string
+  title: string
+  history: string[]
+  historyIndex: number
+}
+
 export type ProxyConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'

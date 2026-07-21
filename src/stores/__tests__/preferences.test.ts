@@ -1,235 +1,126 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { usePreferencesStore, defaultPreferences } from '../preferences'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { DEFAULT_PROXY_PORT, INTERNAL_ROUTES, STORAGE_KEYS } from '@/shared/constants'
+import { defaultPreferences, usePreferencesStore } from '../preferences'
 
 describe('Preferences Store', () => {
-  // Reset store before each test
   beforeEach(() => {
     usePreferencesStore.setState({
       preferences: { ...defaultPreferences },
-      draft: { ...defaultPreferences },
-      isLoaded: false,
-      hasChanges: false,
-      isSaving: false,
+      isLoaded: true,
     })
   })
 
-  describe('defaultPreferences', () => {
-    it('should have correct default values', () => {
-      expect(defaultPreferences.homepage).toBe('ton://start')
-      expect(defaultPreferences.proxyPort).toBe(8080)
-      expect(defaultPreferences.autoConnect).toBe(false)
-      expect(defaultPreferences.anonymousMode).toBe(false)
-      expect(defaultPreferences.theme).toBe('resistance-dog')
-      expect(defaultPreferences.clearOnExit).toBe(false)
+  it('exposes the mobile defaults without persisting a single-option theme', () => {
+    expect(defaultPreferences).toEqual({
+      homepage: INTERNAL_ROUTES.start,
+      language: 'en',
+      proxyPort: DEFAULT_PROXY_PORT,
+      autoConnect: false,
+      anonymousMode: false,
+      clearOnExit: false,
+      javaScriptEnabled: true,
+      thirdPartyCookies: false,
+    })
+    expect(defaultPreferences).not.toHaveProperty('theme')
+  })
+
+  it('updates preferences immediately with type-safe values', () => {
+    const { setPreference } = usePreferencesStore.getState()
+
+    setPreference('anonymousMode', true)
+    setPreference('proxyPort', 9000)
+    setPreference('language', 'fr')
+
+    expect(usePreferencesStore.getState().preferences).toMatchObject({
+      anonymousMode: true,
+      proxyPort: 9000,
+      language: 'fr',
     })
   })
 
-  describe('setDraft', () => {
-    it('should update draft value', () => {
-      const { setDraft } = usePreferencesStore.getState()
+  it('resets every preference to a fresh copy of the defaults', () => {
+    const store = usePreferencesStore.getState()
+    store.setPreference('autoConnect', true)
+    store.setPreference('homepage', 'http://custom.ton')
 
-      setDraft('autoConnect', true)
+    store.resetPreferences()
 
-      const state = usePreferencesStore.getState()
-      expect(state.draft.autoConnect).toBe(true)
-    })
-
-    it('should set hasChanges to true when draft differs from preferences', () => {
-      const { setDraft } = usePreferencesStore.getState()
-
-      expect(usePreferencesStore.getState().hasChanges).toBe(false)
-
-      setDraft('autoConnect', true)
-
-      expect(usePreferencesStore.getState().hasChanges).toBe(true)
-    })
-
-    it('should set hasChanges to false when draft equals preferences', () => {
-      const { setDraft } = usePreferencesStore.getState()
-
-      setDraft('autoConnect', true)
-      expect(usePreferencesStore.getState().hasChanges).toBe(true)
-
-      setDraft('autoConnect', false) // Back to default
-      expect(usePreferencesStore.getState().hasChanges).toBe(false)
-    })
-
-    it('should update numeric values correctly', () => {
-      const { setDraft } = usePreferencesStore.getState()
-
-      setDraft('proxyPort', 9090)
-
-      const state = usePreferencesStore.getState()
-      expect(state.draft.proxyPort).toBe(9090)
-    })
-
-    it('should update string values correctly', () => {
-      const { setDraft } = usePreferencesStore.getState()
-
-      setDraft('homepage', 'ton://custom')
-
-      const state = usePreferencesStore.getState()
-      expect(state.draft.homepage).toBe('ton://custom')
-    })
+    const preferences = usePreferencesStore.getState().preferences
+    expect(preferences).toEqual(defaultPreferences)
+    expect(preferences).not.toBe(defaultPreferences)
   })
 
-  describe('save', () => {
-    it('should save draft to preferences', async () => {
-      const { setDraft, save } = usePreferencesStore.getState()
+  it('migrates legacy state, removes unknown fields and fills new defaults', async () => {
+    localStorage.setItem(
+      STORAGE_KEYS.preferences,
+      JSON.stringify({
+        version: 0,
+        state: {
+          preferences: {
+            homepage: 'http://legacy.ton',
+            language: 'fr',
+            proxyPort: 9090,
+            autoConnect: true,
+            anonymousMode: true,
+            clearOnExit: true,
+            javaScriptEnabled: false,
+            theme: 'resistance-dog',
+            obsoleteSetting: true,
+          },
+        },
+      }),
+    )
 
-      setDraft('anonymousMode', true)
-      setDraft('proxyPort', 9000)
+    await usePreferencesStore.persist.rehydrate()
 
-      await save()
-
-      const state = usePreferencesStore.getState()
-      expect(state.preferences.anonymousMode).toBe(true)
-      expect(state.preferences.proxyPort).toBe(9000)
+    const state = usePreferencesStore.getState()
+    expect(state.isLoaded).toBe(true)
+    expect(state.preferences).toEqual({
+      homepage: 'http://legacy.ton',
+      language: 'fr',
+      proxyPort: 9090,
+      autoConnect: true,
+      anonymousMode: true,
+      clearOnExit: true,
+      javaScriptEnabled: false,
+      thirdPartyCookies: false,
     })
-
-    it('should set hasChanges to false after save', async () => {
-      const { setDraft, save } = usePreferencesStore.getState()
-
-      setDraft('autoConnect', true)
-      expect(usePreferencesStore.getState().hasChanges).toBe(true)
-
-      await save()
-
-      expect(usePreferencesStore.getState().hasChanges).toBe(false)
-    })
-
-    it('should set isSaving during save', async () => {
-      const { setDraft, save } = usePreferencesStore.getState()
-
-      setDraft('proxyPort', 9090)
-
-      const savePromise = save()
-
-      // isSaving should be true during save (may be too fast to catch)
-      await savePromise
-
-      expect(usePreferencesStore.getState().isSaving).toBe(false)
-    })
+    expect(state.preferences).not.toHaveProperty('theme')
+    expect(state.preferences).not.toHaveProperty('obsoleteSetting')
   })
 
-  describe('discard', () => {
-    it('should reset draft to saved preferences', () => {
-      const { setDraft, discard } = usePreferencesStore.getState()
+  it('falls back to safe defaults for invalid persisted values', async () => {
+    localStorage.setItem(
+      STORAGE_KEYS.preferences,
+      JSON.stringify({
+        version: 0,
+        state: {
+          preferences: {
+            homepage: '',
+            language: 'unsupported',
+            proxyPort: '8080',
+            autoConnect: 'yes',
+          },
+        },
+      }),
+    )
 
-      setDraft('anonymousMode', true)
-      setDraft('proxyPort', 9999)
+    await usePreferencesStore.persist.rehydrate()
 
-      discard()
-
-      const state = usePreferencesStore.getState()
-      expect(state.draft.anonymousMode).toBe(false)
-      expect(state.draft.proxyPort).toBe(8080)
-    })
-
-    it('should set hasChanges to false', () => {
-      const { setDraft, discard } = usePreferencesStore.getState()
-
-      setDraft('autoConnect', true)
-      expect(usePreferencesStore.getState().hasChanges).toBe(true)
-
-      discard()
-
-      expect(usePreferencesStore.getState().hasChanges).toBe(false)
-    })
+    expect(usePreferencesStore.getState().preferences).toEqual(defaultPreferences)
   })
 
-  describe('resetToDefaults', () => {
-    it('should reset preferences to defaults', async () => {
-      const { setDraft, save, resetToDefaults } = usePreferencesStore.getState()
+  it.each([80, 65_536])('rejects an out-of-range persisted proxy port: %s', async (proxyPort) => {
+    localStorage.setItem(
+      STORAGE_KEYS.preferences,
+      JSON.stringify({
+        version: 0,
+        state: { preferences: { ...defaultPreferences, proxyPort } },
+      }),
+    )
 
-      // First, change and save some preferences
-      setDraft('proxyPort', 9000)
-      setDraft('anonymousMode', true)
-      await save()
+    await usePreferencesStore.persist.rehydrate()
 
-      // Now reset
-      resetToDefaults()
-
-      const state = usePreferencesStore.getState()
-      expect(state.preferences.theme).toBe('resistance-dog')
-      expect(state.preferences.proxyPort).toBe(8080)
-      expect(state.preferences.anonymousMode).toBe(false)
-    })
-
-    it('should also reset draft', async () => {
-      const { setDraft, save, resetToDefaults } = usePreferencesStore.getState()
-
-      setDraft('autoConnect', true)
-      await save()
-      setDraft('clearOnExit', true) // Unsaved change
-
-      resetToDefaults()
-
-      const state = usePreferencesStore.getState()
-      expect(state.draft.autoConnect).toBe(false)
-      expect(state.draft.clearOnExit).toBe(false)
-    })
-
-    it('should set hasChanges to false', () => {
-      const { setDraft, resetToDefaults } = usePreferencesStore.getState()
-
-      setDraft('autoConnect', true)
-      expect(usePreferencesStore.getState().hasChanges).toBe(true)
-
-      resetToDefaults()
-
-      expect(usePreferencesStore.getState().hasChanges).toBe(false)
-    })
-
-    it('should apply default theme to document', () => {
-      const { resetToDefaults } = usePreferencesStore.getState()
-      const setAttributeSpy = vi.spyOn(document.documentElement, 'setAttribute')
-
-      resetToDefaults()
-
-      expect(setAttributeSpy).toHaveBeenCalledWith('data-theme', 'resistance-dog')
-    })
-  })
-
-  describe('getPreference', () => {
-    it('should return current preference value', () => {
-      const { getPreference } = usePreferencesStore.getState()
-
-      expect(getPreference('theme')).toBe('resistance-dog')
-      expect(getPreference('proxyPort')).toBe(8080)
-    })
-
-    it('should return saved preference, not draft', async () => {
-      const { setDraft, getPreference } = usePreferencesStore.getState()
-
-      setDraft('proxyPort', 9999) // Change draft but don't save
-
-      expect(getPreference('proxyPort')).toBe(8080) // Should return saved value
-    })
-  })
-
-  describe('loadFromMain', () => {
-    it('should mark as loaded', async () => {
-      const { loadFromMain } = usePreferencesStore.getState()
-
-      expect(usePreferencesStore.getState().isLoaded).toBe(false)
-
-      await loadFromMain()
-
-      expect(usePreferencesStore.getState().isLoaded).toBe(true)
-    })
-
-    it('should sync draft with preferences', async () => {
-      // Simulate already having saved preferences
-      usePreferencesStore.setState({
-        preferences: { ...defaultPreferences, proxyPort: 9000 },
-      })
-
-      const { loadFromMain } = usePreferencesStore.getState()
-      await loadFromMain()
-
-      const state = usePreferencesStore.getState()
-      expect(state.draft.proxyPort).toBe(9000)
-    })
+    expect(usePreferencesStore.getState().preferences.proxyPort).toBe(DEFAULT_PROXY_PORT)
   })
 })

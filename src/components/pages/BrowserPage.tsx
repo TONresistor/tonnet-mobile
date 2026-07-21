@@ -4,19 +4,20 @@
  * Supports swipe gestures for back/forward navigation.
  */
 
-import { useState, useEffect, useRef } from 'react'
-import { Globe, AlertCircle, Loader2, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useSettingsStore } from '@/stores/settings'
+import { AlertCircle, ChevronLeft, ChevronRight, Globe, Loader2, RefreshCw } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { useProxyStore } from '@/stores/proxy'
-import { usePreferences } from '@/stores/preferences'
 import { Button } from '@/components/ui/button'
+import { formatDisplayUrl } from '@/lib/url'
+import { useNavigationStore } from '@/stores/navigation'
+import { usePreferences } from '@/stores/preferences'
+import { useProxyStore } from '@/stores/proxy'
 
 const SWIPE_THRESHOLD = 80
 
 export function BrowserPage() {
   const { currentUrl, reloadCounter, canGoBack, canGoForward, goBack, goForward } =
-    useSettingsStore(
+    useNavigationStore(
       useShallow((s) => ({
         currentUrl: s.currentUrl,
         reloadCounter: s.reloadCounter,
@@ -24,7 +25,7 @@ export function BrowserPage() {
         canGoForward: s.canGoForward,
         goBack: s.goBack,
         goForward: s.goForward,
-      }))
+      })),
     )
   const proxyStatus = useProxyStore((state) => state.status)
   const isProxyConnected = proxyStatus === 'connected'
@@ -69,7 +70,7 @@ export function BrowserPage() {
 
   // Reset state when URL changes
   useEffect(() => {
-    setIsLoading(true)
+    setIsLoading(Boolean(currentUrl))
     setError(null)
   }, [currentUrl])
 
@@ -109,7 +110,7 @@ export function BrowserPage() {
   }
 
   // Display URL nicely
-  const displayUrl = currentUrl.replace(/^https?:\/\//, '')
+  const displayUrl = formatDisplayUrl(currentUrl)
 
   // If proxy is not connected, show error
   if (!isProxyConnected) {
@@ -137,12 +138,7 @@ export function BrowserPage() {
       <div className="flex items-center gap-2 px-4 py-2 bg-background-secondary border-b border-border">
         <Globe className="h-4 w-4 text-primary flex-shrink-0" />
         <span className="text-sm text-foreground truncate flex-1">{displayUrl}</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleRefresh}
-          className="p-1 h-8 w-8"
-        >
+        <Button variant="ghost" size="sm" onClick={handleRefresh} className="p-1 h-8 w-8">
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
@@ -214,9 +210,7 @@ export function BrowserPage() {
         {!targetUrl && !error && (
           <div className="flex flex-col items-center justify-center h-full p-8">
             <Globe className="h-16 w-16 text-muted-foreground mb-4 opacity-50" />
-            <p className="text-muted-foreground text-center">
-              Enter a .ton address to browse
-            </p>
+            <p className="text-muted-foreground text-center">Enter a .ton address to browse</p>
           </div>
         )}
       </div>

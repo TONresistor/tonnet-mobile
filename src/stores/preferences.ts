@@ -1,176 +1,123 @@
-/**
- * Preferences store - User preferences management.
- * Handles theme, homepage, network settings, and other app preferences.
- * Adapted for mobile: uses localStorage instead of Electron IPC.
- */
-
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { isLanguageCode, type LanguageCode } from '@/i18n/registry'
+import { normalizeUrl } from '@/lib/url'
+import {
+  DEFAULT_LANGUAGE,
+  DEFAULT_PROXY_PORT,
+  INTERNAL_ROUTES,
+  STORAGE_KEYS,
+} from '@/shared/constants'
 
-// AppPreferences interface - all user-configurable settings (mobile-optimized)
-export interface AppPreferences {
-  // General
+interface AppPreferences {
   homepage: string
-  language: string
-
-  // Network
+  language: LanguageCode
   proxyPort: number
   autoConnect: boolean
   anonymousMode: boolean
-
-  // Appearance
-  theme: 'resistance-dog'
-
-  // Privacy
   clearOnExit: boolean
   javaScriptEnabled: boolean
   thirdPartyCookies: boolean
 }
 
-// Default preferences (mobile-optimized)
 export const defaultPreferences: AppPreferences = {
-  // General
-  homepage: 'ton://start',
-  language: 'en',
-
-  // Network
-  proxyPort: 8080,
+  homepage: INTERNAL_ROUTES.start,
+  language: DEFAULT_LANGUAGE,
+  proxyPort: DEFAULT_PROXY_PORT,
   autoConnect: false,
   anonymousMode: false,
-
-  // Appearance
-  theme: 'resistance-dog',
-
-  // Privacy
   clearOnExit: false,
   javaScriptEnabled: true,
   thirdPartyCookies: false,
 }
 
 interface PreferencesState {
-  // Current saved preferences
   preferences: AppPreferences
-
-  // Draft for editing (unsaved changes)
-  draft: AppPreferences
-
-  // State flags
   isLoaded: boolean
-  hasChanges: boolean
-  isSaving: boolean
+  setPreference: <Key extends keyof AppPreferences>(key: Key, value: AppPreferences[Key]) => void
+  resetPreferences: () => void
+}
 
-  // Actions
-  loadFromMain: () => Promise<void>
-  setDraft: <K extends keyof AppPreferences>(key: K, value: AppPreferences[K]) => void
-  save: () => Promise<void>
-  discard: () => void
-  resetToDefaults: () => void
+const PREFERENCES_STORAGE_VERSION = 1
 
-  // Direct preference getters (for components that just need to read)
-  getPreference: <K extends keyof AppPreferences>(key: K) => AppPreferences[K]
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function booleanOrDefault(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback
+}
+
+function sanitizePreferences(value: unknown): AppPreferences {
+  const candidate = isRecord(value) ? value : {}
+  const proxyPort =
+    typeof candidate.proxyPort === 'number' &&
+    Number.isInteger(candidate.proxyPort) &&
+    candidate.proxyPort > 1024 &&
+    candidate.proxyPort <= 65_535
+      ? candidate.proxyPort
+      : defaultPreferences.proxyPort
+
+  return {
+    homepage:
+      typeof candidate.homepage === 'string'
+        ? normalizeUrl(candidate.homepage) || defaultPreferences.homepage
+        : defaultPreferences.homepage,
+    language: isLanguageCode(candidate.language) ? candidate.language : defaultPreferences.language,
+    proxyPort,
+    autoConnect: booleanOrDefault(candidate.autoConnect, defaultPreferences.autoConnect),
+    anonymousMode: booleanOrDefault(candidate.anonymousMode, defaultPreferences.anonymousMode),
+    clearOnExit: booleanOrDefault(candidate.clearOnExit, defaultPreferences.clearOnExit),
+    javaScriptEnabled: booleanOrDefault(
+      candidate.javaScriptEnabled,
+      defaultPreferences.javaScriptEnabled,
+    ),
+    thirdPartyCookies: booleanOrDefault(
+      candidate.thirdPartyCookies,
+      defaultPreferences.thirdPartyCookies,
+    ),
+  }
 }
 
 export const usePreferencesStore = create<PreferencesState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       preferences: { ...defaultPreferences },
-      draft: { ...defaultPreferences },
       isLoaded: false,
-      hasChanges: false,
-      isSaving: false,
 
-      loadFromMain: async () => {
-        // On mobile, we just mark as loaded since persist middleware handles loading
-        const state = get()
-        set({
-          draft: { ...state.preferences },
-          isLoaded: true,
-          hasChanges: false,
-        })
-      },
+      setPreference: (key, value) =>
+        set((state) => ({
+          preferences: { ...state.preferences, [key]: value },
+        })),
 
-      setDraft: (key, value) => {
-        const state = get()
-        const newDraft = { ...state.draft, [key]: value }
-
-        // Check if there are any changes compared to saved preferences
-        const hasChanges = Object.keys(newDraft).some(
-          (k) => newDraft[k as keyof AppPreferences] !== state.preferences[k as keyof AppPreferences]
-        )
-
-        set({
-          draft: newDraft,
-          hasChanges,
-        })
-      },
-
-      save: async () => {
-        set({ isSaving: true })
-        try {
-          const state = get()
-          const newPreferences = { ...state.draft }
-
-          // Apply theme change immediately
-          if (newPreferences.theme !== state.preferences.theme) {
-            document.documentElement.setAttribute('data-theme', newPreferences.theme)
-          }
-
-          set({
-            preferences: newPreferences,
-            hasChanges: false,
-            isSaving: false,
-          })
-        } catch (error) {
-          console.error('Failed to save preferences:', error)
-          set({ isSaving: false })
-        }
-      },
-
-      discard: () => {
-        const state = get()
-        set({
-          draft: { ...state.preferences },
-          hasChanges: false,
-        })
-      },
-
-      resetToDefaults: () => {
-        set({
-          preferences: { ...defaultPreferences },
-          draft: { ...defaultPreferences },
-          hasChanges: false,
-        })
-        // Apply default theme
-        document.documentElement.setAttribute('data-theme', defaultPreferences.theme)
-      },
-
-      getPreference: (key) => {
-        return get().preferences[key]
-      },
+      resetPreferences: () => set({ preferences: { ...defaultPreferences } }),
     }),
     {
-      name: 'tonnet-preferences',
-      partialize: (state) => ({
-        preferences: state.preferences,
-      }),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          // Merge defaults for new fields not in persisted state
-          state.preferences = { ...defaultPreferences, ...state.preferences }
-          state.draft = { ...state.preferences }
-          state.isLoaded = true
-
-          // Apply saved theme
-          if (state.preferences.theme) {
-            document.documentElement.setAttribute('data-theme', state.preferences.theme)
-          }
+      name: STORAGE_KEYS.preferences,
+      version: PREFERENCES_STORAGE_VERSION,
+      partialize: (state) => ({ preferences: state.preferences }),
+      migrate: (persistedState) => {
+        const persisted = isRecord(persistedState) ? persistedState : {}
+        return {
+          ...persisted,
+          preferences: sanitizePreferences(persisted.preferences),
+        } as PreferencesState
+      },
+      merge: (persistedState, currentState) => {
+        const persisted = isRecord(persistedState) ? persistedState : {}
+        return {
+          ...currentState,
+          preferences: sanitizePreferences(persisted.preferences),
+          isLoaded: true,
         }
       },
-    }
-  )
+      onRehydrateStorage: () => (state) => {
+        if (state) state.isLoaded = true
+      },
+    },
+  ),
 )
 
-// Hook for components that only need to read preferences (not edit)
 export function usePreferences(): AppPreferences {
   return usePreferencesStore((state) => state.preferences)
 }

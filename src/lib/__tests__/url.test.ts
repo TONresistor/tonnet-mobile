@@ -2,8 +2,8 @@
  * Tests for URL utilities.
  */
 
-import { describe, it, expect } from 'vitest'
-import { normalizeUrl } from '../url'
+import { describe, expect, it } from 'vitest'
+import { formatDisplayUrl, isTonSiteUrl, normalizeUrl } from '../url'
 
 describe('normalizeUrl', () => {
   describe('empty input', () => {
@@ -82,8 +82,64 @@ describe('normalizeUrl', () => {
     })
 
     it('handles domain with port', () => {
-      // Port contains no dot, but domain does
       expect(normalizeUrl('example.ton:8080')).toBe('http://example.ton:8080')
     })
+
+    it('appends .ton before a port on a short host', () => {
+      expect(normalizeUrl('example:8080/path')).toBe('http://example.ton:8080/path')
+    })
+
+    it('preserves query strings and fragments', () => {
+      expect(normalizeUrl('example/path?query=value#result')).toBe(
+        'http://example.ton/path?query=value#result',
+      )
+    })
   })
+
+  describe('protocol safety', () => {
+    it.each([
+      'javascript:alert(1)',
+      'javascript:123',
+      'data:text/html,test',
+      'vbscript:msgbox(1)',
+      'file:///tmp',
+    ])('rejects unsupported scheme %s', (url) => {
+      expect(normalizeUrl(url)).toBe('')
+    })
+
+    it('accepts supported schemes case-insensitively', () => {
+      expect(normalizeUrl('HTTPS://EXAMPLE.COM')).toBe('HTTPS://EXAMPLE.COM')
+    })
+
+    it('rejects malformed protocol syntax', () => {
+      expect(normalizeUrl('https:example.com')).toBe('')
+    })
+  })
+})
+
+describe('formatDisplayUrl', () => {
+  it('strips HTTP schemes and leaves other values unchanged', () => {
+    expect(formatDisplayUrl('https://example.ton/path')).toBe('example.ton/path')
+    expect(formatDisplayUrl('HTTP://EXAMPLE.TON')).toBe('EXAMPLE.TON')
+    expect(formatDisplayUrl('ton://start')).toBe('ton://start')
+  })
+})
+
+describe('isTonSiteUrl', () => {
+  it.each([
+    'http://example.ton',
+    'subdomain.ton',
+    'https://example.adnl/path',
+    'https://t.me/channel',
+    'https://sub.t.me/channel',
+  ])('recognizes supported TON-related host %s', (url) => {
+    expect(isTonSiteUrl(url)).toBe(true)
+  })
+
+  it.each(['https://example.com/.ton', 'not a url', '', 'ton://start'])(
+    'does not classify unrelated or invalid value %s',
+    (url) => {
+      expect(isTonSiteUrl(url)).toBe(false)
+    },
+  )
 })

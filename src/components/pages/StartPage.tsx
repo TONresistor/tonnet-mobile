@@ -3,20 +3,20 @@
  * Simple search interface for .ton sites.
  */
 
-import { useState, FormEvent } from 'react'
+import { type FormEvent, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import explorerGif from '@/assets/explorer.gif'
 import tonIcon from '@/assets/ton.png'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import { useSettingsStore } from '@/stores/settings'
 import { normalizeUrl } from '@/lib/url'
-import { useTranslation } from 'react-i18next'
+import { useNavigationStore } from '@/stores/navigation'
 
 export function StartPage() {
   const { t } = useTranslation('browser')
   const { t: tc } = useTranslation('common')
   const [searchInput, setSearchInput] = useState('')
   const isMobile = useIsMobile()
-  const { navigate } = useSettingsStore()
+  const navigate = useNavigationStore((state) => state.navigate)
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault()
@@ -36,13 +36,17 @@ export function StartPage() {
           className={isMobile ? 'w-[140px] h-[140px] mb-6' : 'w-[200px] h-[200px] mb-8'}
         />
 
-        <p className={`text-muted-foreground text-center mb-8 ${isMobile ? 'text-base px-4' : 'text-xl'}`}>
+        <p
+          className={`text-muted-foreground text-center mb-8 ${isMobile ? 'text-base px-4' : 'text-xl'}`}
+        >
           {t('explore_subtitle')}
         </p>
 
         {/* Search Form */}
         <form onSubmit={handleSearch} className="w-full max-w-[500px] px-4">
-          <div className={`flex items-center bg-background border border-border rounded-full focus-within:border-primary ${isMobile ? 'p-1' : 'p-1.5'}`}>
+          <div
+            className={`flex items-center bg-background border border-border rounded-full focus-within:border-primary ${isMobile ? 'p-1' : 'p-1.5'}`}
+          >
             <span className={isMobile ? 'px-3' : 'px-4'}>
               <img src={tonIcon} alt="TON" className={isMobile ? 'w-5 h-5' : 'w-6 h-6'} />
             </span>
