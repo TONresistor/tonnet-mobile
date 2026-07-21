@@ -2,13 +2,14 @@
  * Bookmarks bottom sheet component.
  * Shows list of bookmarks with tap-to-navigate and long-press-to-edit.
  */
-import { useState, useRef } from 'react'
-import { Globe, Trash2, Check, X } from 'lucide-react'
-import { BottomSheet } from './BottomSheet'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { useBookmarksStore } from '@/stores/bookmarks'
+
+import { Check, Globe, Trash2, X } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { useBookmarksStore } from '@/stores/bookmarks'
+import { BottomSheet } from './BottomSheet'
 
 interface BookmarksSheetProps {
   open: boolean
@@ -107,6 +108,7 @@ export function BookmarksSheet({ open, onClose, onNavigate }: BookmarksSheetProp
               ) : (
                 // Normal mode
                 <button
+                  type="button"
                   className="w-full flex items-center gap-3 p-3 rounded-lg active:bg-muted transition-colors text-left"
                   onClick={() => handleTap(bookmark.url)}
                   onTouchStart={() => handleTouchStart(bookmark.id, bookmark.title, bookmark.url)}

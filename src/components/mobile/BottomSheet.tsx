@@ -3,14 +3,15 @@
  * Modal sheet that slides up from the bottom of the screen.
  */
 
-import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useId, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useModalDialog } from './useModalDialog'
 
 interface BottomSheetProps {
   open: boolean
   onClose: () => void
-  title?: string
+  title: string
   children: React.ReactNode
   showHandle?: boolean
   showCloseButton?: boolean
@@ -26,33 +27,19 @@ export function BottomSheet({
   showCloseButton = true,
   maxHeight = '70vh',
 }: BottomSheetProps) {
+  const { t } = useTranslation('common')
   const sheetRef = useRef<HTMLDivElement>(null)
   const startY = useRef<number>(0)
   const currentY = useRef<number>(0)
+  const titleId = useId()
+  const dialogBehavior = useModalDialog(open, onClose, sheetRef)
 
-  // Handle escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && open) {
-        onClose()
-      }
-    }
-
-    if (open) {
-      document.addEventListener('keydown', handleKeyDown)
-      // Prevent body scroll when sheet is open
-      document.body.style.overflow = 'hidden'
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = ''
-    }
-  }, [open, onClose])
+  if (!open) return null
 
   // Handle touch gestures for swipe-to-close
   const handleTouchStart = (e: React.TouchEvent) => {
     startY.current = e.touches[0].clientY
+    currentY.current = startY.current
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -65,12 +52,16 @@ export function BottomSheet({
     }
   }
 
+  const resetTouchPosition = () => {
+    startY.current = 0
+    currentY.current = 0
+
+    if (sheetRef.current) sheetRef.current.style.transform = ''
+  }
+
   const handleTouchEnd = () => {
     const deltaY = currentY.current - startY.current
-
-    if (sheetRef.current) {
-      sheetRef.current.style.transform = ''
-    }
+    resetTouchPosition()
 
     // Close if dragged down more than 100px
     if (deltaY > 100) {
@@ -79,33 +70,24 @@ export function BottomSheet({
   }
 
   return (
-    <div
-      className={cn(
-        'fixed inset-0 z-[60] transition-opacity duration-300',
-        open ? 'opacity-100' : 'opacity-0 pointer-events-none'
-      )}
-      role="dialog"
-      aria-modal="true"
-      aria-hidden={!open}
-    >
+    <div className="fixed inset-0 z-[60]" data-modal-root>
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
 
       {/* Sheet */}
       <div
         ref={sheetRef}
-        className={cn(
-          'absolute bottom-0 left-0 right-0 bg-background rounded-t-2xl transition-transform duration-300 spring-smooth safe-area-bottom',
-          open ? 'translate-y-0' : 'translate-y-full'
-        )}
+        className="absolute bottom-0 left-0 right-0 bg-background rounded-t-2xl transition-transform duration-300 spring-smooth safe-area-bottom translate-y-0"
         style={{ maxHeight }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onKeyDown={dialogBehavior.onKeyDown}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={resetTouchPosition}
       >
         {/* Handle */}
         {showHandle && (
@@ -115,22 +97,21 @@ export function BottomSheet({
         )}
 
         {/* Header */}
-        {(title || showCloseButton) && (
-          <div className="flex items-center justify-between px-4 pb-3 border-b border-border">
-            {title && (
-              <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-            )}
-            {showCloseButton && (
-              <button
-                onClick={onClose}
-                className="p-2 -mr-2 rounded-lg text-muted-foreground active:bg-muted transition-colors"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            )}
-          </div>
-        )}
+        <div className="flex items-center justify-between px-4 pb-3 border-b border-border">
+          <h2 id={titleId} className="text-lg font-semibold text-foreground">
+            {title}
+          </h2>
+          {showCloseButton && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 -mr-2 rounded-lg text-muted-foreground active:bg-muted transition-colors"
+              aria-label={t('cancel')}
+            >
+              <X aria-hidden="true" className="h-5 w-5" />
+            </button>
+          )}
+        </div>
 
         {/* Content */}
         <div className="overflow-auto px-4 py-4" style={{ maxHeight: `calc(${maxHeight} - 80px)` }}>
