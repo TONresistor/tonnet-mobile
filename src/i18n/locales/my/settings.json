@@ -9,7 +9,7 @@
   "auto_connect_desc": "အက်ပ်ဖွင့်သည်နှင့် ချိတ်ဆက်မည်",
   "proxy_port": "Proxy Port",
   "proxy_port_desc": "ဒေသတွင်း proxy ဆာဗာ port",
-  "proxy_port_edit_desc": "ဒေသတွင်း TON proxy ဆာဗာအတွက် port နံပါတ် (1024-65535)။",
+  "proxy_port_edit_desc": "ဒေသတွင်း TON proxy ဆာဗာအတွက် port နံပါတ် (1025-65535)။",
   "general": "အထွေထွေ",
   "homepage": "မူလစာမျက်နှာ",
   "homepage_desc": "တက်ဘ်အသစ်များအတွက် စာမျက်နှာ",

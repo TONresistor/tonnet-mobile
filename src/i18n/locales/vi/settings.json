@@ -9,7 +9,7 @@
   "auto_connect_desc": "Kết nối khi khởi động ứng dụng",
   "proxy_port": "Cổng proxy",
   "proxy_port_desc": "Cổng máy chủ proxy cục bộ",
-  "proxy_port_edit_desc": "Số cổng của máy chủ proxy TON cục bộ (1024-65535).",
+  "proxy_port_edit_desc": "Số cổng của máy chủ proxy TON cục bộ (1025-65535).",
   "general": "Chung",
   "homepage": "Trang chủ",
   "homepage_desc": "Trang mở cho tab mới",

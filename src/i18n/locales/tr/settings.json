@@ -9,7 +9,7 @@
   "auto_connect_desc": "Uygulama açılışında bağlan",
   "proxy_port": "Proxy Portu",
   "proxy_port_desc": "Yerel proxy sunucu portu",
-  "proxy_port_edit_desc": "Yerel TON proxy sunucusu için port numarası (1024-65535).",
+  "proxy_port_edit_desc": "Yerel TON proxy sunucusu için port numarası (1025-65535).",
   "general": "Genel",
   "homepage": "Ana Sayfa",
   "homepage_desc": "Yeni sekmeler için sayfa",

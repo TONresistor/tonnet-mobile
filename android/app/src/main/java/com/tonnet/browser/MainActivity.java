@@ -1,142 +1,308 @@
 package com.tonnet.browser;
 
+import android.annotation.SuppressLint;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
+import android.webkit.CookieManager;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import androidx.webkit.ProxyConfig;
 import androidx.webkit.ProxyController;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
-
 import com.getcapacitor.BridgeActivity;
 import com.tonnet.browser.plugins.TonProxyPlugin;
 
 public class MainActivity extends BridgeActivity {
 
-    // Privacy-friendly User-Agent (generic Chrome on Android)
-    private static final String CUSTOM_USER_AGENT =
-        "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36";
+  public interface BrowserOperationCallback {
+    void onSuccess();
 
-    private PrivacyWebViewClient privacyWebViewClient;
+    void onFailure(String code, String message, Throwable cause);
+  }
 
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        // Register plugins
-        registerPlugin(TonProxyPlugin.class);
+  // Privacy-friendly User-Agent (generic Chrome on Android)
+  private static final String CUSTOM_USER_AGENT =
+      "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36";
+  private static final long BROWSER_CALLBACK_TIMEOUT_MS = 5_000L;
 
-        // Increase HTTP connection pool — default is 5 per host, which saturates
-        // when multiple .ton sub-resources are fetched concurrently through the proxy
-        System.setProperty("http.maxConnections", "20");
+  private final Handler callbackHandler = new Handler(Looper.getMainLooper());
+  private PrivacyWebViewClient privacyWebViewClient;
 
-        super.onCreate(savedInstanceState);
+  @Override
+  public void onCreate(Bundle savedInstanceState) {
+    // Register plugins
+    registerPlugin(TonProxyPlugin.class);
 
-        WebView.setWebContentsDebuggingEnabled(
-                0 != (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE));
+    // Increase HTTP connection pool — default is 5 per host, which saturates
+    // when multiple .ton sub-resources are fetched concurrently through the proxy
+    System.setProperty("http.maxConnections", "20");
 
-        // Configure WebView for privacy
-        WebView webView = getBridge().getWebView();
-        if (webView != null) {
-            WebSettings settings = webView.getSettings();
+    super.onCreate(savedInstanceState);
 
-            // MIXED_CONTENT_ALWAYS_ALLOW is required: Capacitor serves from https://localhost
-            // but .ton sites are loaded via HTTP through the local proxy in iframes.
-            // COMPATIBILITY_MODE blocks these HTTP iframes as mixed content.
-            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+    WebView.setWebContentsDebuggingEnabled(
+        0 != (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE));
 
-            // Set custom User-Agent to avoid fingerprinting
-            settings.setUserAgentString(CUSTOM_USER_AGENT);
+    // Configure WebView for privacy
+    WebView webView = getBridge().getWebView();
+    if (webView != null) {
+      WebSettings settings = webView.getSettings();
 
-            // Disable invasive features for privacy
-            settings.setGeolocationEnabled(false);
-            settings.setSaveFormData(false);
-            settings.setAllowFileAccessFromFileURLs(false);
-            settings.setAllowUniversalAccessFromFileURLs(false);
+      // MIXED_CONTENT_ALWAYS_ALLOW is required: Capacitor serves from https://localhost
+      // but .ton sites are loaded via HTTP through the local proxy in iframes.
+      // COMPATIBILITY_MODE blocks these HTTP iframes as mixed content.
+      settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
-            settings.setDomStorageEnabled(true);
-            settings.setDatabaseEnabled(true);
-            settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-            settings.setTextZoom(100);
+      // Set custom User-Agent to avoid fingerprinting
+      settings.setUserAgentString(CUSTOM_USER_AGENT);
 
-            // Block access to content:// URIs (prevents leaking local provider data)
-            settings.setAllowContentAccess(false);
+      // Disable invasive features for privacy
+      settings.setGeolocationEnabled(false);
+      settings.setSaveFormData(false);
+      settings.setAllowFileAccessFromFileURLs(false);
+      settings.setAllowUniversalAccessFromFileURLs(false);
 
-            // Require user gesture to start media playback
-            settings.setMediaPlaybackRequiresUserGesture(true);
+      settings.setDomStorageEnabled(true);
+      settings.setDatabaseEnabled(true);
+      settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+      settings.setTextZoom(100);
 
-            settings.setSafeBrowsingEnabled(false);
+      // Block access to content:// URIs (prevents leaking local provider data)
+      settings.setAllowContentAccess(false);
 
-            // Block third-party cookies
-            android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
+      // Require user gesture to start media playback
+      settings.setMediaPlaybackRequiresUserGesture(true);
 
-            if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
-                WebSettingsCompat.setAlgorithmicDarkeningAllowed(settings, false);
-            }
+      settings.setSafeBrowsingEnabled(false);
 
-            // Apply privacy WebViewClient with tracker blocking
-            privacyWebViewClient = new PrivacyWebViewClient(getBridge());
-            webView.setWebViewClient(privacyWebViewClient);
-        }
+      // Block third-party cookies
+      try {
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, false);
+      } catch (RuntimeException error) {
+        Log.e("MainActivity", "Unable to apply the initial cookie policy", error);
+      }
+
+      if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
+        WebSettingsCompat.setAlgorithmicDarkeningAllowed(settings, false);
+      }
+
+      // Apply privacy WebViewClient with tracker blocking
+      privacyWebViewClient = new PrivacyWebViewClient(getBridge());
+      webView.setWebViewClient(privacyWebViewClient);
+    }
+  }
+
+  @SuppressLint("RequiresFeature") // Guarded by the explicit PROXY_OVERRIDE feature check below.
+  public void configureProxy(int port, BrowserOperationCallback callback) {
+    TimedCompletion<Integer> completion =
+        timedCompletion(
+            new OnceCompletion.Callback<Integer>() {
+              @Override
+              public void onSuccess(Integer configuredPort) {
+                if (privacyWebViewClient != null) {
+                  privacyWebViewClient.setProxyPort(configuredPort);
+                }
+                notifySuccess(callback);
+              }
+
+              @Override
+              public void onFailure(String code, String message, Throwable cause) {
+                notifyFailure(callback, code, message, cause);
+              }
+            },
+            "WEBVIEW_PROXY_TIMEOUT",
+            "Timed out while configuring the WebView proxy");
+    if (completion.isCompleted()) {
+      return;
     }
 
-    public void configureProxy(int port) {
-        if (privacyWebViewClient != null) {
-            privacyWebViewClient.setProxyPort(port);
-        }
+    if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
+      completion.reject(
+          "WEBVIEW_PROXY_UNSUPPORTED",
+          "Proxy override is not supported by this Android WebView",
+          null);
+      return;
+    }
 
-        if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
-            Log.w("MainActivity", "ProxyController not supported on this WebView version");
-            return;
-        }
-
-        ProxyConfig proxyConfig = new ProxyConfig.Builder()
+    ProxyConfig proxyConfig =
+        new ProxyConfig.Builder()
             .addProxyRule("127.0.0.1:" + port)
             .addBypassRule("localhost")
             .build();
 
-        ProxyController.getInstance().setProxyOverride(
-            proxyConfig,
-            command -> command.run(),
-            () -> {}
-        );
+    try {
+      ProxyController.getInstance()
+          .setProxyOverride(
+              proxyConfig,
+              command -> command.run(),
+              () -> {
+                if (!completion.resolve(port)) {
+                  Log.w("MainActivity", "Ignoring a late WebView proxy configuration callback");
+                }
+              });
+    } catch (RuntimeException | LinkageError error) {
+      completion.reject("WEBVIEW_PROXY_FAILED", "Failed to configure the WebView proxy", error);
+    }
+  }
+
+  @Override
+  public void onDestroy() {
+    // Stop native Go proxy to prevent zombie processes
+    TonProxyPlugin.stopNativeProxy();
+    // Clear proxy configuration when activity is destroyed
+    clearProxy(
+        new BrowserOperationCallback() {
+          @Override
+          public void onSuccess() {
+            Log.i("MainActivity", "WebView proxy cleared during Activity destruction");
+          }
+
+          @Override
+          public void onFailure(String code, String message, Throwable cause) {
+            Log.w("MainActivity", message, cause);
+          }
+        });
+    super.onDestroy();
+  }
+
+  @SuppressLint("RequiresFeature") // Guarded by the explicit PROXY_OVERRIDE feature check below.
+  public void clearProxy(BrowserOperationCallback callback) {
+    TimedCompletion<Void> completion =
+        timedCompletion(
+            operationCompletion(callback),
+            "WEBVIEW_PROXY_TIMEOUT",
+            "Timed out while clearing the WebView proxy");
+    if (completion.isCompleted()) {
+      return;
     }
 
-    @Override
-    public void onDestroy() {
-        // Stop native Go proxy to prevent zombie processes
-        TonProxyPlugin.stopNativeProxy();
-        // Clear proxy configuration when activity is destroyed
-        clearProxy();
-        super.onDestroy();
+    if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
+      completion.reject(
+          "WEBVIEW_PROXY_UNSUPPORTED",
+          "Proxy override is not supported by this Android WebView",
+          null);
+      return;
     }
 
-    public void clearProxy() {
-        if (!WebViewFeature.isFeatureSupported(WebViewFeature.PROXY_OVERRIDE)) {
-            return;
-        }
+    try {
+      ProxyController.getInstance()
+          .clearProxyOverride(
+              command -> command.run(),
+              () -> {
+                if (!completion.resolve(null)) {
+                  Log.w("MainActivity", "Ignoring a late WebView proxy clear callback");
+                }
+              });
+    } catch (RuntimeException | LinkageError error) {
+      completion.reject("WEBVIEW_PROXY_FAILED", "Failed to clear the WebView proxy", error);
+    }
+  }
 
-        ProxyController.getInstance().clearProxyOverride(
-            command -> command.run(),
-            () -> {}
-        );
+  @Override
+  public void onTrimMemory(int level) {
+    super.onTrimMemory(level);
+    if (level >= TRIM_MEMORY_RUNNING_LOW) {
+      WebView webView = getBridge().getWebView();
+      if (webView != null) {
+        webView.clearCache(false);
+      }
+    }
+  }
+
+  /**
+   * Clears only browser-owned data selected by the caller. Web Storage deliberately remains managed
+   * by TypeScript so native cleanup cannot remove application preferences.
+   */
+  public void clearBrowsingData(
+      boolean cache, boolean cookies, boolean history, BrowserOperationCallback callback) {
+    TimedCompletion<Void> completion =
+        timedCompletion(
+            operationCompletion(callback),
+            "COOKIE_CLEAR_TIMEOUT",
+            "Timed out while clearing browser cookies");
+    if (completion.isCompleted()) {
+      return;
     }
 
-    @Override
-    public void onTrimMemory(int level) {
-        super.onTrimMemory(level);
-        if (level >= TRIM_MEMORY_RUNNING_LOW) {
-            WebView webView = getBridge().getWebView();
-            if (webView != null) {
-                webView.clearCache(false);
-            }
-        }
-    }
+    try {
+      WebView webView = getBridge().getWebView();
+      if (webView == null) {
+        completion.resolve(null);
+        return;
+      }
 
-    public void clearBrowsingDataNative() {
-        android.webkit.WebView webView = getBridge().getWebView();
+      if (cache) {
         webView.clearCache(true);
+      }
+      if (history) {
         webView.clearHistory();
-        android.webkit.CookieManager.getInstance().removeAllCookies(null);
-        android.webkit.WebStorage.getInstance().deleteAllData();
+      }
+      if (cookies) {
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.removeAllCookies(
+            removed -> {
+              try {
+                cookieManager.flush();
+                completion.resolve(null);
+              } catch (RuntimeException error) {
+                completion.reject(
+                    "BROWSING_DATA_CLEAR_FAILED", "Failed to flush browser cookies", error);
+              }
+            });
+        return;
+      }
+
+      completion.resolve(null);
+    } catch (RuntimeException | LinkageError error) {
+      completion.reject("BROWSING_DATA_CLEAR_FAILED", "Failed to clear browser data", error);
     }
+  }
+
+  private OnceCompletion.Callback<Void> operationCompletion(BrowserOperationCallback callback) {
+    return new OnceCompletion.Callback<Void>() {
+      @Override
+      public void onSuccess(Void ignored) {
+        notifySuccess(callback);
+      }
+
+      @Override
+      public void onFailure(String code, String message, Throwable cause) {
+        notifyFailure(callback, code, message, cause);
+      }
+    };
+  }
+
+  private <T> TimedCompletion<T> timedCompletion(
+      OnceCompletion.Callback<T> callback, String timeoutCode, String timeoutMessage) {
+    return new TimedCompletion<>(
+        callback,
+        (task, delayMillis) -> {
+          if (!callbackHandler.postDelayed(task, delayMillis)) {
+            throw new IllegalStateException("Handler rejected the timeout task");
+          }
+          return () -> callbackHandler.removeCallbacks(task);
+        },
+        BROWSER_CALLBACK_TIMEOUT_MS,
+        timeoutCode,
+        timeoutMessage);
+  }
+
+  private static void notifySuccess(BrowserOperationCallback callback) {
+    try {
+      callback.onSuccess();
+    } catch (RuntimeException | LinkageError error) {
+      Log.e("MainActivity", "Browser operation success callback failed", error);
+    }
+  }
+
+  private static void notifyFailure(
+      BrowserOperationCallback callback, String code, String message, Throwable cause) {
+    try {
+      callback.onFailure(code, message, cause);
+    } catch (RuntimeException | LinkageError error) {
+      Log.e("MainActivity", "Browser operation failure callback failed", error);
+    }
+  }
 }

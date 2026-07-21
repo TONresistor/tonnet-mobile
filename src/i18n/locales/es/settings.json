@@ -9,7 +9,7 @@
   "auto_connect_desc": "Conectar al iniciar la app",
   "proxy_port": "Puerto de Proxy",
   "proxy_port_desc": "Puerto del servidor proxy local",
-  "proxy_port_edit_desc": "Número de puerto para el servidor proxy TON local (1024-65535).",
+  "proxy_port_edit_desc": "Número de puerto para el servidor proxy TON local (1025-65535).",
   "general": "General",
   "homepage": "Página de inicio",
   "homepage_desc": "Página para nuevas pestañas",

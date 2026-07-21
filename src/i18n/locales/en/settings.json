@@ -9,7 +9,7 @@
   "auto_connect_desc": "Connect on app launch",
   "proxy_port": "Proxy Port",
   "proxy_port_desc": "Local proxy server port",
-  "proxy_port_edit_desc": "Port number for the local TON proxy server (1024-65535).",
+  "proxy_port_edit_desc": "Port number for the local TON proxy server (1025-65535).",
   "general": "General",
   "homepage": "Homepage",
   "homepage_desc": "Page for new tabs",

@@ -9,7 +9,7 @@
   "auto_connect_desc": "ऐप खुलने पर कनेक्ट करें",
   "proxy_port": "Proxy Port",
   "proxy_port_desc": "लोकल proxy सर्वर पोर्ट",
-  "proxy_port_edit_desc": "लोकल TON proxy सर्वर के लिए पोर्ट नंबर (1024-65535)।",
+  "proxy_port_edit_desc": "लोकल TON proxy सर्वर के लिए पोर्ट नंबर (1025-65535)।",
   "general": "सामान्य",
   "homepage": "होमपेज",
   "homepage_desc": "नए tabs के लिए पेज",

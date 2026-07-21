@@ -9,7 +9,7 @@
   "auto_connect_desc": "启动应用时自动连接",
   "proxy_port": "代理端口",
   "proxy_port_desc": "本地代理服务器端口",
-  "proxy_port_edit_desc": "本地 TON 代理服务器的端口号（1024-65535）。",
+  "proxy_port_edit_desc": "本地 TON 代理服务器的端口号（1025-65535）。",
   "general": "通用",
   "homepage": "主页",
   "homepage_desc": "新标签页打开的页面",

@@ -9,7 +9,7 @@
   "auto_connect_desc": "앱 시작 시 연결",
   "proxy_port": "프록시 포트",
   "proxy_port_desc": "로컬 프록시 서버 포트",
-  "proxy_port_edit_desc": "로컬 TON 프록시 서버의 포트 번호 (1024-65535).",
+  "proxy_port_edit_desc": "로컬 TON 프록시 서버의 포트 번호 (1025-65535).",
   "general": "일반",
   "homepage": "홈페이지",
   "homepage_desc": "새 탭 기본 페이지",

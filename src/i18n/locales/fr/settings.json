@@ -9,7 +9,7 @@
   "auto_connect_desc": "Se connecter au lancement de l'app",
   "proxy_port": "Port du proxy",
   "proxy_port_desc": "Port du serveur proxy local",
-  "proxy_port_edit_desc": "Numéro de port pour le serveur proxy TON local (1024-65535).",
+  "proxy_port_edit_desc": "Numéro de port pour le serveur proxy TON local (1025-65535).",
   "general": "Général",
   "homepage": "Page d'accueil",
   "homepage_desc": "Page pour les nouveaux onglets",

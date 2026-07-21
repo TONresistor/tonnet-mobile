@@ -1,256 +1,272 @@
-/**
- * Platform Bridge
- * Unified API for Android (Capacitor) and Desktop (Electron)
- *
- * This module provides a single interface for platform-specific functionality,
- * abstracting away the differences between Capacitor plugins on Android
- * and Electron IPC on Desktop.
- */
 import { Capacitor } from '@capacitor/core'
-import { TonProxy } from '../plugins/ton-proxy'
-import type {
-  Platform,
-  PlatformEventType,
-  PlatformEventListener,
-  EventSubscription,
-  ProxyConnectOptions,
-  ProxyConnectResult,
-  ProxyStatusResult,
-  ClearBrowsingDataOptions,
+import { createLogger } from '@/lib/logger'
+import { TonProxy } from '@/plugins/ton-proxy'
+import { DEFAULT_PROXY_PORT, PRESERVED_STORAGE_KEYS } from '@/shared/constants'
+import {
+  type ClearBrowsingDataOptions,
+  type EventSubscription,
+  type Platform,
+  PlatformError,
+  type PlatformEventListener,
+  type PlatformEventType,
+  type ProxyConnectOptions,
+  type ProxyConnectResult,
+  type ProxyStatusResult,
 } from './types'
 
-// ============================================================================
-// Platform Detection
-// ============================================================================
+const PROXY_CONNECT_TIMEOUT_MS = 120_000
+const PROXY_STOP_TIMEOUT_MS = 15_000
+const ANONYMOUS_RETRY_COUNT = 3
+const STANDARD_RETRY_COUNT = 1
+const RETRY_DELAY_MS = 3_000
+const CONNECTED_FEEDBACK_DELAY_MS = 500
 
-const capacitorPlatform = Capacitor.getPlatform()
-const isAndroid = capacitorPlatform === 'android'
-const isDesktop = typeof window !== 'undefined' && 'electron' in window && window.electron !== undefined
-const isWeb = !isAndroid && !isDesktop
+const logger = createLogger('Platform')
+const isAndroid = Capacitor.getPlatform() === 'android'
 
-// ============================================================================
-// Event Management
-// ============================================================================
-
-type EventCallback = (...args: unknown[]) => void
-const eventListeners = new Map<string, Set<EventCallback>>()
-
-function addEventSubscription(event: string, callback: EventCallback): EventSubscription {
-  if (!eventListeners.has(event)) {
-    eventListeners.set(event, new Set())
-  }
-  eventListeners.get(event)!.add(callback)
-
-  return {
-    remove: () => {
-      eventListeners.get(event)?.delete(callback)
-    },
+class NonRetryableProxyError extends PlatformError {
+  constructor(message: string, originalError?: unknown) {
+    super('NATIVE_FAILURE', message, originalError)
   }
 }
 
-function emitEvent(event: string, data: unknown): void {
-  eventListeners.get(event)?.forEach((callback) => {
+type EventCallback = (data: { step: number; message: string }) => void
+const eventListeners = new Map<PlatformEventType, Set<EventCallback>>()
+
+function emitProgress(step: number, message: string): void {
+  eventListeners.get('proxy:progress')?.forEach((callback) => {
     try {
-      callback(data)
+      callback({ step, message })
     } catch (error) {
-      console.error(`Error in event listener for ${event}:`, error)
+      logger.error('Proxy progress listener failed', error)
     }
   })
 }
 
-// ============================================================================
-// Setup Native Event Listeners (Android)
-// ============================================================================
+function on<T extends PlatformEventType>(
+  event: T,
+  listener: PlatformEventListener<T>,
+): EventSubscription {
+  const listeners = eventListeners.get(event) ?? new Set<EventCallback>()
+  listeners.add(listener as EventCallback)
+  eventListeners.set(event, listeners)
 
-let androidListenersInitialized = false
-
-async function initAndroidListeners(): Promise<void> {
-  if (androidListenersInitialized || !isAndroid) return
-  androidListenersInitialized = true
-
-  try {
-    // Proxy events
-    await TonProxy.addListener('proxyStarted', (event) => {
-      emitEvent('proxy:started', { port: event.port })
-    })
-
-    await TonProxy.addListener('proxyStopped', () => {
-      emitEvent('proxy:stopped', {})
-    })
-
-    await TonProxy.addListener('proxyError', (event) => {
-      emitEvent('proxy:error', { error: event.error || 'Unknown error' })
-    })
-  } catch (error) {
-    console.error('Failed to initialize Android listeners:', error)
+  return {
+    remove: () => {
+      listeners.delete(listener as EventCallback)
+      if (listeners.size === 0) eventListeners.delete(event)
+    },
   }
 }
 
-// Initialize listeners on Android
-if (isAndroid) {
-  initAndroidListeners()
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 }
 
-// ============================================================================
-// Proxy Implementation
-// ============================================================================
+function asPlatformError(error: unknown, fallbackMessage: string): PlatformError {
+  if (error instanceof PlatformError) return error
 
-const proxyApi = {
-  connect: async (options: ProxyConnectOptions = {}): Promise<ProxyConnectResult> => {
-    const { port = 8080, anonymous = false } = options
+  if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'OFFLINE') {
+    return new PlatformError('OFFLINE', 'An active Internet connection is required', error)
+  }
 
-    if (isAndroid) {
-      // Emit progress events for UI feedback
-      emitEvent('proxy:progress', { step: 0, message: anonymous ? 'Initializing tunnel...' : 'Starting proxy...' })
+  return new PlatformError('NATIVE_FAILURE', fallbackMessage, error)
+}
 
+async function startWithTimeout(
+  options: Required<ProxyConnectOptions>,
+  timeoutMilliseconds: number,
+): Promise<ProxyConnectResult> {
+  let timeoutId: number | undefined
+
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new PlatformError('TIMEOUT', 'The TON proxy did not start in time'))
+    }, timeoutMilliseconds)
+  })
+
+  try {
+    return await Promise.race([TonProxy.start(options), timeout])
+  } finally {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+  }
+}
+
+async function stopNativeProxyWithTimeout(): Promise<void> {
+  let timeoutId: number | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new PlatformError('TIMEOUT', 'The TON proxy did not stop in time'))
+    }, PROXY_STOP_TIMEOUT_MS)
+  })
+
+  try {
+    await Promise.race([TonProxy.stop(), timeout])
+  } finally {
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId)
+  }
+}
+
+function normalizeConnectOptions(options: ProxyConnectOptions): Required<ProxyConnectOptions> {
+  const normalized = {
+    port: options.port ?? DEFAULT_PROXY_PORT,
+    anonymous: options.anonymous ?? false,
+  }
+
+  if (!Number.isInteger(normalized.port) || normalized.port <= 1024 || normalized.port > 65_535) {
+    throw new PlatformError('INVALID_CONFIG', 'Proxy port must be between 1025 and 65535')
+  }
+
+  return normalized
+}
+
+async function stopAfterTimeout(error: unknown): Promise<void> {
+  if (!(error instanceof PlatformError) || error.code !== 'TIMEOUT') return
+
+  try {
+    await stopNativeProxyWithTimeout()
+  } catch (stopError) {
+    logger.warn('Timed-out proxy could not be stopped cleanly', stopError)
+  }
+}
+
+async function startProxyAttempt(
+  options: Required<ProxyConnectOptions>,
+  timeoutMilliseconds: number,
+): Promise<ProxyConnectResult> {
+  try {
+    const result = await startWithTimeout(options, timeoutMilliseconds)
+    if (!result.success) {
+      throw new PlatformError('NATIVE_FAILURE', 'The native proxy rejected the request')
+    }
+    const anonymous = result.anonymous ?? options.anonymous
+    if (anonymous !== options.anonymous) {
       try {
-        const maxRetries = anonymous ? 3 : 1
-        let result: { success: boolean; port: number } = { success: false, port: 0 }
-
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-          if (attempt > 1) {
-            emitEvent('proxy:progress', { step: 0, message: `Retrying tunnel discovery (${attempt}/${maxRetries})...` })
-            await new Promise(r => setTimeout(r, 3000))
-          }
-
-          try {
-            let timedOut = false
-            const timeout = new Promise<{ success: false; port: 0 }>((resolve) =>
-              setTimeout(() => { timedOut = true; resolve({ success: false, port: 0 }) }, 120000)
-            )
-            result = await Promise.race([TonProxy.start({ port, anonymous }), timeout])
-            if (timedOut) {
-              TonProxy.stop().catch(() => {})
-            }
-
-            if (result.success) break
-          } catch {
-            // Native call rejected (e.g. DHT discovery failed) — retry if attempts remain
-          }
-
-          if (attempt < maxRetries) continue
-
-          emitEvent('proxy:progress', { step: -1, message: 'Failed to start proxy' })
-          return { success: false, port: 0 }
-        }
-
-        if (!result.success) {
-          emitEvent('proxy:progress', { step: -1, message: 'Failed to start proxy' })
-          return { success: false, port: 0 }
-        }
-
-        // On Android, the Go library handles circuit building internally
-        // and reports success only when the circuit is ready.
-        // We skip the fetch-based sync check because fetch() doesn't route
-        // through our local proxy on Android (WebView uses PrivacyWebViewClient instead)
-        emitEvent('proxy:progress', { step: 1, message: 'Syncing with network...' })
-
-        // Small delay for UI feedback
-        await new Promise(r => setTimeout(r, 500))
-
-        emitEvent('proxy:progress', { step: 2, message: 'Connected!' })
-        return { success: true, port: result.port }
+        await stopNativeProxyWithTimeout()
       } catch (error) {
-        emitEvent('proxy:progress', { step: -1, message: 'Connection failed' })
-        throw error
+        throw new NonRetryableProxyError(
+          'The running proxy mode does not match the request and cleanup failed',
+          error,
+        )
       }
+      throw new NonRetryableProxyError('The running proxy mode does not match the request')
+    }
+    return { success: true, port: result.port || options.port, anonymous }
+  } catch (error) {
+    await stopAfterTimeout(error)
+    throw error
+  }
+}
+
+async function waitForRetry(
+  attempt: number,
+  maxAttempts: number,
+  deadline: number,
+): Promise<boolean> {
+  if (attempt <= 1) return true
+
+  emitProgress(0, `Retrying tunnel discovery (${attempt}/${maxAttempts})...`)
+  const retryDelay = Math.min(RETRY_DELAY_MS, Math.max(0, deadline - Date.now()))
+  if (retryDelay === 0) return false
+
+  await delay(retryDelay)
+  return true
+}
+
+function normalizeRetryableStartError(error: unknown): PlatformError {
+  const platformError = asPlatformError(error, 'Failed to start the TON proxy')
+  if (platformError.code === 'OFFLINE') {
+    emitProgress(-1, 'Internet connection required')
+    throw platformError
+  }
+  if (platformError instanceof NonRetryableProxyError) {
+    emitProgress(-1, 'Failed to start proxy')
+    throw platformError
+  }
+  return platformError
+}
+
+async function connectProxy(options: ProxyConnectOptions = {}): Promise<ProxyConnectResult> {
+  const normalized = normalizeConnectOptions(options)
+
+  if (!isAndroid) {
+    throw new PlatformError('UNAVAILABLE', 'The TON proxy is only available on Android')
+  }
+
+  emitProgress(0, normalized.anonymous ? 'Initializing tunnel...' : 'Starting proxy...')
+  const maxAttempts = normalized.anonymous ? ANONYMOUS_RETRY_COUNT : STANDARD_RETRY_COUNT
+  const deadline = Date.now() + PROXY_CONNECT_TIMEOUT_MS
+  let lastError: unknown
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    if (!(await waitForRetry(attempt, maxAttempts, deadline))) break
+
+    const remainingTime = deadline - Date.now()
+    if (remainingTime <= 0) {
+      lastError = new PlatformError('TIMEOUT', 'The TON proxy did not start in time')
+      break
     }
 
-    if (isDesktop && window.electron) {
-      return window.electron.proxy.connect(options)
+    try {
+      const result = await startProxyAttempt(normalized, remainingTime)
+      emitProgress(1, 'Syncing with network...')
+      await delay(CONNECTED_FEEDBACK_DELAY_MS)
+      emitProgress(2, 'Connected!')
+      return result
+    } catch (error) {
+      lastError = normalizeRetryableStartError(error)
     }
+  }
 
-    // Web fallback - no proxy available
-    console.warn('Proxy not available on web platform')
-    return { success: false, port: 0 }
+  emitProgress(-1, 'Failed to start proxy')
+  throw asPlatformError(lastError, 'Failed to start the TON proxy')
+}
+
+const proxyApi: Platform['proxy'] = {
+  connect: connectProxy,
+
+  async disconnect() {
+    if (!isAndroid) return
+    try {
+      await stopNativeProxyWithTimeout()
+    } catch (error) {
+      throw asPlatformError(error, 'Failed to stop the TON proxy')
+    }
   },
 
-  disconnect: async (): Promise<void> => {
-    if (isAndroid) {
-      await TonProxy.stop()
-      return
-    }
-
-    if (isDesktop && window.electron) {
-      await window.electron.proxy.disconnect()
-      return
-    }
-
-    console.warn('Proxy not available on web platform')
-  },
-
-  getStatus: async (): Promise<ProxyStatusResult> => {
-    if (isAndroid) {
+  async getStatus(): Promise<ProxyStatusResult> {
+    if (!isAndroid) return { running: false }
+    try {
       const status = await TonProxy.getStatus()
       return {
         running: status.running,
         port: status.port,
         anonymous: status.anonymous,
-        error: status.error,
       }
+    } catch (error) {
+      throw asPlatformError(error, 'Failed to read the TON proxy status')
     }
+  },
 
-    if (isDesktop && window.electron) {
-      return window.electron.proxy.status()
+  async getLogs() {
+    if (!isAndroid) return []
+    try {
+      const result = await TonProxy.getLogs()
+      return result.logs.split('\n').filter(Boolean)
+    } catch (error) {
+      throw asPlatformError(error, 'Failed to read the TON proxy logs')
     }
-
-    return { running: false }
   },
 }
 
-// ============================================================================
-// Navigation
-// ============================================================================
-
-function navigate(url: string): void {
-  if (isAndroid) {
-    // On Android with Capacitor, navigate within the WebView
-    // For ton:// URLs, the native side will handle routing
-    window.location.href = url
-    return
+async function setThirdPartyCookies(enabled: boolean): Promise<void> {
+  if (!isAndroid) return
+  try {
+    await TonProxy.setThirdPartyCookies({ enabled })
+  } catch (error) {
+    throw asPlatformError(error, 'Failed to update the cookie policy')
   }
-
-  if (isDesktop && window.electron) {
-    window.electron.navigate(url)
-    return
-  }
-
-  // Web fallback
-  window.location.href = url
 }
-
-// ============================================================================
-// Event Subscription
-// ============================================================================
-
-function on<T extends PlatformEventType>(
-  event: T,
-  listener: PlatformEventListener<T>
-): EventSubscription {
-  // For Desktop/Electron, also subscribe to IPC events
-  if (isDesktop && window.electron) {
-    const electronChannel = event.replace(':', '-')
-    const unsubscribe = window.electron.on(electronChannel, listener as (...args: unknown[]) => void)
-
-    // Create a combined subscription
-    const internalSub = addEventSubscription(event, listener as EventCallback)
-    return {
-      remove: () => {
-        internalSub.remove()
-        unsubscribe()
-      },
-    }
-  }
-
-  return addEventSubscription(event, listener as EventCallback)
-}
-
-// ============================================================================
-// Clear Browsing Data
-// ============================================================================
-
-// Keys to preserve when clearing localStorage (app data, not browsing data)
-const PRESERVE_STORAGE_KEYS = ['tonnet-preferences', 'tonnet-bookmarks']
 
 async function clearBrowsingData(options: ClearBrowsingDataOptions = {}): Promise<void> {
   const {
@@ -261,82 +277,52 @@ async function clearBrowsingData(options: ClearBrowsingDataOptions = {}): Promis
     sessionStorage: clearSessionStorage = true,
   } = options
 
-  if (isDesktop && window.electron) {
-    await window.electron.clearBrowsingData(options)
-    return
-  }
-
-  // For Android/Web, clear what we can from JavaScript
   try {
     if (clearLocalStorage) {
-      // Save app data before clearing
-      const preserved: Record<string, string | null> = {}
-      PRESERVE_STORAGE_KEYS.forEach((key) => {
-        preserved[key] = window.localStorage.getItem(key)
-      })
+      const preserved = new Map<string, string>()
+      for (const key of PRESERVED_STORAGE_KEYS) {
+        const value = window.localStorage.getItem(key)
+        if (value !== null) preserved.set(key, value)
+      }
 
       window.localStorage.clear()
-
-      // Restore app data
-      Object.entries(preserved).forEach(([key, value]) => {
-        if (value !== null) {
-          window.localStorage.setItem(key, value)
-        }
+      preserved.forEach((value, key) => {
+        window.localStorage.setItem(key, value)
       })
     }
 
-    if (clearSessionStorage) {
-      window.sessionStorage.clear()
-    }
+    if (clearSessionStorage) window.sessionStorage.clear()
 
     if (cache && 'caches' in window) {
       const cacheNames = await window.caches.keys()
       await Promise.all(cacheNames.map((name) => window.caches.delete(name)))
     }
 
-    if (isAndroid && (cookies || history)) {
-      try {
-        await (TonProxy as any).clearBrowsingData()
-      } catch (e) {
-        console.warn('Native clear failed:', e)
-      }
+    if (isAndroid && (cache || cookies || history)) {
+      await TonProxy.clearBrowsingData({ cache, cookies, history })
     }
   } catch (error) {
-    console.error('Failed to clear browsing data:', error)
-    throw error
+    throw asPlatformError(error, 'Failed to clear browsing data')
   }
 }
 
-// ============================================================================
-// Platform Export
-// ============================================================================
-
 export const platform: Platform = {
-  // Platform detection
   isAndroid,
-  isDesktop,
-  isWeb,
-
-  // APIs
   proxy: proxyApi,
-
-  // Functions
-  navigate,
+  setThirdPartyCookies,
   on,
   clearBrowsingData,
 }
 
-// Default export for convenience
-export default platform
-
-// Re-export types
 export type {
-  Platform,
-  PlatformEventType,
-  PlatformEventListener,
+  ClearBrowsingDataOptions,
   EventSubscription,
+  Platform,
+  PlatformEventListener,
+  PlatformEventType,
   ProxyConnectOptions,
   ProxyConnectResult,
   ProxyStatusResult,
-  ClearBrowsingDataOptions,
 } from './types'
+
+export { PlatformError } from './types'

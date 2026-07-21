@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.18.1)
 project("tonproxy-jni")
 
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
+
 # Get the path to the libs directory (relative to android/app/src/main/cpp)
 set(LIBS_DIR ${CMAKE_SOURCE_DIR}/../../../libs)
 
@@ -16,9 +20,17 @@ add_library(tonproxy-jni SHARED
     tonproxy_jni.c
 )
 
-# Include the header from jni directory
-target_include_directories(tonproxy-jni PRIVATE
-    ${CMAKE_SOURCE_DIR}/../jni
+# Treat every bridge warning as a build failure.
+target_compile_options(tonproxy-jni PRIVATE
+    -Wall
+    -Wextra
+    -Werror
+)
+
+# Android 15+ devices can use a 16 KiB memory page size. Keep every LOAD
+# segment compatible instead of relying on the linker's host default.
+target_link_options(tonproxy-jni PRIVATE
+    "LINKER:-z,max-page-size=16384"
 )
 
 # Link against prebuilt library and Android log

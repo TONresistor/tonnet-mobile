@@ -10,13 +10,36 @@
  */
 
 #include <jni.h>
-#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 // Forward declarations of CGO-exported functions from libtonutils-proxy.so
-extern char* StartProxy(unsigned short port);
+extern unsigned long long ReserveProxyStart(void);
+extern char* StartProxyReserved(unsigned short port, unsigned long long token);
 extern char* StopProxy(void);
+extern int IsProxyActive(void);
+
+/** Reserve a native startup token that a later StopProxy call can invalidate atomically. */
+JNIEXPORT jlong JNICALL
+Java_com_tonnet_browser_plugins_TonProxyPlugin_ReserveProxyStart(
+    JNIEnv *env,
+    jclass clazz
+) {
+    (void)env;
+    (void)clazz;
+    return (jlong)ReserveProxyStart();
+}
+
+/** Return whether the process-wide Go proxy is still active. */
+JNIEXPORT jboolean JNICALL
+Java_com_tonnet_browser_plugins_TonProxyPlugin_IsProxyActive(
+    JNIEnv *env,
+    jclass clazz
+) {
+    (void)env;
+    (void)clazz;
+    return IsProxyActive() != 0 ? JNI_TRUE : JNI_FALSE;
+}
 
 /**
  * JNI wrapper for StopProxy
@@ -28,6 +51,7 @@ Java_com_tonnet_browser_plugins_TonProxyPlugin_StopProxy(
     JNIEnv *env,
     jclass clazz
 ) {
+    (void)clazz;
     char* result = StopProxy();
     jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
 
@@ -44,15 +68,18 @@ Java_com_tonnet_browser_plugins_TonProxyPlugin_StopProxy(
  * config.json in dirPath allows the same binary to handle both direct
  * and anonymous mode (via TunnelSectionsNum in config.json).
  *
- * Java signature: private static native String StartProxyInDir(short port, String dirPath);
+ * Java signature: private static native String StartProxyInDir(
+ *     short port, String dirPath, long token);
  */
 JNIEXPORT jstring JNICALL
 Java_com_tonnet_browser_plugins_TonProxyPlugin_StartProxyInDir(
     JNIEnv *env,
     jclass clazz,
     jshort port,
-    jstring dirPath
+    jstring dirPath,
+    jlong token
 ) {
+    (void)clazz;
     if (dirPath == NULL) {
         return (*env)->NewStringUTF(env, "ERROR: null dirPath");
     }
@@ -69,7 +96,7 @@ Java_com_tonnet_browser_plugins_TonProxyPlugin_StartProxyInDir(
         return (*env)->NewStringUTF(env, "ERROR: chdir failed");
     }
 
-    char* result = StartProxy((unsigned short)port);
+    char* result = StartProxyReserved((unsigned short)port, (unsigned long long)token);
     jstring jresult = (*env)->NewStringUTF(env, result ? result : "ERROR");
 
     if (result != NULL) {
