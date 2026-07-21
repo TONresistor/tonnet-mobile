@@ -1,5 +1,17 @@
+import groovy.json.JsonSlurper
+
 apply plugin: 'com.android.application'
 apply plugin: 'com.diffplug.spotless'
+
+def packageMetadataFile = rootProject.file('../package.json')
+if (!packageMetadataFile.isFile()) {
+    throw new GradleException("Missing package metadata: ${packageMetadataFile}")
+}
+def packageMetadata = new JsonSlurper().parse(packageMetadataFile)
+def appVersionName = packageMetadata.version?.toString()
+if (!appVersionName) {
+    throw new GradleException('package.json must contain a non-empty version')
+}
 
 android {
     namespace = "com.tonnet.browser"
@@ -9,8 +21,8 @@ android {
         applicationId "com.tonnet.browser"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4
-        versionName "1.1.0-beta02"
+        versionCode 5
+        versionName appVersionName
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
