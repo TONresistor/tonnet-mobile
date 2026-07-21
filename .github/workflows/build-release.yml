@@ -2,83 +2,211 @@ name: Build Release APK
 
 on:
   release:
-    types: [created]
+    types:
+      - published
   workflow_dispatch:
+    inputs:
+      channel:
+        description: Release channel (must match the package.json SemVer)
+        required: true
+        default: beta
+        type: choice
+        options:
+          - beta
+          - production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "22"
+  JAVA_VERSION: "21"
+  GO_VERSION: "1.25.5"
+  GOTOOLCHAIN: local
+  GOEXPERIMENT: nodwarf5
+  TON_PROXY_SHA256: 59ef357356cc3720a3854c3ec32e79834b8c0c59fd7c4ed3404fa4258ada643d
+  ANDROID_PLATFORM_VERSION: "36"
+  BUILD_TOOLS_VERSION: "36.0.0"
+  NDK_VERSION: 27.1.12297006
+  CMAKE_VERSION: 3.18.1
+  ACTIONLINT_VERSION: 1.7.12
+  ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
 
 jobs:
   validate:
-    name: Validate
+    name: Validate Release
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      channel: ${{ steps.metadata.outputs.channel }}
+      package-version: ${{ steps.metadata.outputs.package-version }}
+      version: ${{ steps.metadata.outputs.version }}
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          node-version: '22'
-          cache: 'npm'
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install and run pinned Actionlint
+        run: |
+          archive="$RUNNER_TEMP/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          install_dir="$RUNNER_TEMP/actionlint-${ACTIONLINT_VERSION}"
+          curl --fail-with-body --silent --show-error --location \
+            --output "$archive" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          printf '%s  %s\n' "$ACTIONLINT_SHA256" "$archive" | sha256sum --check -
+          mkdir -p "$install_dir"
+          tar -xzf "$archive" -C "$install_dir" actionlint
+          "$install_dir/actionlint" -version
+          "$install_dir/actionlint"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
       - name: Install dependencies
         run: npm ci
-      - name: Type check
-        run: npx tsc --noEmit
-      - name: Run tests
-        run: npm run test:run
+
+      - name: Verify ShellCheck
+        run: shellcheck --version
+
+      - name: Run quality gate
+        run: npm run check
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Validate release metadata
+        id: metadata
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_IS_PRERELEASE: ${{ github.event.release.prerelease }}
+          MANUAL_CHANNEL: ${{ inputs.channel }}
+        run: |
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          if [[ ! "$PACKAGE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "Invalid package version: $PACKAGE_VERSION" >&2
+            exit 1
+          fi
+
+          VERSION_WITHOUT_BUILD_METADATA="${PACKAGE_VERSION%%+*}"
+          if [[ "$VERSION_WITHOUT_BUILD_METADATA" == *-* ]]; then
+            EXPECTED_CHANNEL=beta
+          else
+            EXPECTED_CHANNEL=production
+          fi
+
+          if [[ "$GITHUB_EVENT_NAME" == release ]]; then
+            if [[ -z "$DEFAULT_BRANCH" ]] || \
+              ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/$DEFAULT_BRANCH"; then
+              echo "Release commit must belong to the repository default branch" >&2
+              exit 1
+            fi
+            EXPECTED_TAG="v${PACKAGE_VERSION}"
+            if [[ "$RELEASE_TAG" != "$EXPECTED_TAG" ]]; then
+              echo "Release tag must be $EXPECTED_TAG, got $RELEASE_TAG" >&2
+              exit 1
+            fi
+            VERSION="$RELEASE_TAG"
+            if [[ "$RELEASE_IS_PRERELEASE" == true ]]; then
+              CHANNEL=beta
+            else
+              CHANNEL=production
+            fi
+          else
+            VERSION="v${PACKAGE_VERSION}-dev"
+            CHANNEL="${MANUAL_CHANNEL:-beta}"
+          fi
+
+          if [[ "$CHANNEL" != "$EXPECTED_CHANNEL" ]]; then
+            echo "Release channel $CHANNEL does not match package version $PACKAGE_VERSION (expected $EXPECTED_CHANNEL)" >&2
+            exit 1
+          fi
+
+          {
+            printf 'channel=%s\n' "$CHANNEL"
+            printf 'package-version=%s\n' "$PACKAGE_VERSION"
+            printf 'version=%s\n' "$VERSION"
+          } >> "$GITHUB_OUTPUT"
 
   build:
+    name: Build, Sign, and Verify APK
     needs: validate
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
-      contents: write
+      contents: read
+    env:
+      RELEASE_CHANNEL: ${{ needs.validate.outputs.channel }}
+      EXPECTED_VERSION_NAME: ${{ needs.validate.outputs.package-version }}
+      EXPECTED_VERSION_CODE: "5"
+      ANDROID_BETA_SIGNING_CERT_SHA256: ${{ vars.ANDROID_BETA_SIGNING_CERT_SHA256 }}
+      ANDROID_PROD_SIGNING_CERT_SHA256: ${{ vars.ANDROID_PROD_SIGNING_CERT_SHA256 }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: gradle-
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
 
-      - name: Install NDK and CMake
-        run: |
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;27.1.12297006" "cmake;3.18.1"
+      - name: Install pinned Android build tools
+        run: >-
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          --install
+          "platforms;android-${ANDROID_PLATFORM_VERSION}"
+          "build-tools;${BUILD_TOOLS_VERSION}"
+          "ndk;${NDK_VERSION}"
+          "cmake;${CMAKE_VERSION}"
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
-          go-version: '1.24'
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: false
+          cache: false
 
-      - name: Build tonutils-proxy from source
+      - name: Build pinned TON proxy
         run: |
-          git clone --depth 1 --branch v1.9.4 https://github.com/TONresistor/Tonutils-Proxy.git /tmp/tonutils-proxy
-          cd /tmp/tonutils-proxy
-          mkdir -p $GITHUB_WORKSPACE/android/app/libs/jniLibs/arm64-v8a
-          CC=$ANDROID_HOME/ndk/27.1.12297006/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
-          CGO_ENABLED=1 GOOS=android GOARCH=arm64 \
-          go build -buildmode c-shared -trimpath \
-            -gcflags=all="-l" \
-            -ldflags="-w -s -X main.GitCommit=v1.9.4" \
-            -o $GITHUB_WORKSPACE/android/app/libs/jniLibs/arm64-v8a/libtonutils-proxy.so \
-            cmd/lib/main.go
+          ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$NDK_VERSION" \
+            ./scripts/build-ton-proxy.sh --clean
+          printf '%s  %s\n' \
+            "$TON_PROXY_SHA256" \
+            android/app/libs/jniLibs/arm64-v8a/libtonutils-proxy.so |
+            sha256sum --check -
 
       - name: Install dependencies
         run: npm ci
@@ -87,88 +215,254 @@ jobs:
         run: npm run build
 
       - name: Sync Capacitor
-        run: npx cap sync android
+        run: npm run cap:sync
 
-      - name: Build APK
+      - name: Verify and build Android app
         working-directory: android
         run: |
-          if [ "${{ github.event.release.prerelease }}" = "true" ]; then
-            ./gradlew assembleBetaRelease
+          if [[ "$RELEASE_CHANNEL" == beta ]]; then
+            ./gradlew --no-daemon spotlessCheck testProdDebugUnitTest lintBetaRelease assembleBetaRelease
+          elif [[ "$RELEASE_CHANNEL" == production ]]; then
+            ./gradlew --no-daemon spotlessCheck testProdDebugUnitTest lintProdRelease assembleProdRelease
           else
-            ./gradlew assembleProdRelease
+            echo "Unsupported release channel: $RELEASE_CHANNEL" >&2
+            exit 1
           fi
 
-      - name: Sign APK
-        run: |
-          UNSIGNED=$(find android/app/build/outputs/apk -name '*-release-unsigned.apk' | head -1)
-          VERSION="${{ github.event.release.tag_name || 'dev' }}"
-          BUILD_TOOLS="${ANDROID_HOME}/build-tools/$(ls ${ANDROID_HOME}/build-tools/ | sort -V | tail -1)"
-          ALIGNED=/tmp/app-aligned.apk
-          ${BUILD_TOOLS}/zipalign -f 4 "$UNSIGNED" "$ALIGNED"
-          if [ "${{ github.event.release.prerelease }}" = "true" ]; then
-            if [ ! -f ~/.android/debug.keystore ]; then
-              mkdir -p ~/.android
-              keytool -genkeypair -v -keystore ~/.android/debug.keystore -keyalg RSA -keysize 2048 \
-                -validity 10000 -alias androiddebugkey -storepass android -keypass android \
-                -dname "CN=Android Debug,O=Android,C=US"
-            fi
-            ${BUILD_TOOLS}/apksigner sign --ks ~/.android/debug.keystore --ks-pass pass:android "$ALIGNED"
-          else
-            echo "${{ secrets.SIGNING_KEY }}" | base64 -d > /tmp/keystore.jks
-            ${BUILD_TOOLS}/apksigner sign \
-              --ks /tmp/keystore.jks \
-              --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
-              --ks-pass "pass:${{ secrets.KEY_STORE_PASSWORD }}" \
-              --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
-              "$ALIGNED"
-            rm -f /tmp/keystore.jks
-          fi
-          mv "$ALIGNED" tonnet-browser-${VERSION}.apk
-
-      - name: Upload APK to Release
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: tonnet-browser-*.apk
+      - name: Sign and verify release APK
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          : "${SIGNING_KEY:?SIGNING_KEY is required for signed releases}"
+          : "${KEY_ALIAS:?KEY_ALIAS is required for signed releases}"
+          : "${KEY_STORE_PASSWORD:?KEY_STORE_PASSWORD is required for signed releases}"
+          : "${KEY_PASSWORD:?KEY_PASSWORD is required for signed releases}"
 
-      - name: Upload APK as Artifact
-        uses: actions/upload-artifact@v4
+          if [[ "$RELEASE_CHANNEL" == beta ]]; then
+            INPUT_APK="android/app/build/outputs/apk/beta/release/app-beta-release-unsigned.apk"
+            EXPECTED_PACKAGE="com.tonnet.browser.beta"
+            EXPECTED_CERT_SHA256="$ANDROID_BETA_SIGNING_CERT_SHA256"
+            CERT_VARIABLE_NAME="ANDROID_BETA_SIGNING_CERT_SHA256"
+          elif [[ "$RELEASE_CHANNEL" == production ]]; then
+            INPUT_APK="android/app/build/outputs/apk/prod/release/app-prod-release-unsigned.apk"
+            EXPECTED_PACKAGE="com.tonnet.browser"
+            EXPECTED_CERT_SHA256="$ANDROID_PROD_SIGNING_CERT_SHA256"
+            CERT_VARIABLE_NAME="ANDROID_PROD_SIGNING_CERT_SHA256"
+          else
+            echo "Unsupported release channel: $RELEASE_CHANNEL" >&2
+            exit 1
+          fi
+
+          [[ -f "$INPUT_APK" ]] || {
+            echo "Expected unsigned APK not found: $INPUT_APK" >&2
+            exit 1
+          }
+
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION"
+          ZIPALIGN="$BUILD_TOOLS/zipalign"
+          APKSIGNER="$BUILD_TOOLS/apksigner"
+          AAPT2="$BUILD_TOOLS/aapt2"
+          for tool in "$ZIPALIGN" "$APKSIGNER" "$AAPT2"; do
+            [[ -x "$tool" ]] || {
+              echo "Required Android build tool not found: $tool" >&2
+              exit 1
+            }
+          done
+
+          umask 077
+          SIGNING_DIR="$(mktemp -d "$RUNNER_TEMP/tonnet-signing.XXXXXX")"
+          trap 'rm -rf "$SIGNING_DIR"' EXIT
+          KEYSTORE="$SIGNING_DIR/release.jks"
+          ALIGNED_APK="$SIGNING_DIR/aligned.apk"
+          printf '%s' "$SIGNING_KEY" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+
+          "$ZIPALIGN" -P 16 -f -v 4 "$INPUT_APK" "$ALIGNED_APK"
+
+          export APKSIGNER_KS_PASS="$KEY_STORE_PASSWORD"
+          export APKSIGNER_KEY_PASS="$KEY_PASSWORD"
+          OUTPUT_APK="tonnet-browser-${EXPECTED_VERSION_NAME}.apk"
+          "$APKSIGNER" sign \
+            --ks "$KEYSTORE" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass env:APKSIGNER_KS_PASS \
+            --key-pass env:APKSIGNER_KEY_PASS \
+            --out "$OUTPUT_APK" \
+            "$ALIGNED_APK"
+          unset APKSIGNER_KS_PASS APKSIGNER_KEY_PASS
+
+          "$ZIPALIGN" -c -P 16 -v 4 "$OUTPUT_APK"
+          VERIFY_OUTPUT="$("$APKSIGNER" verify --Werr --verbose --print-certs "$OUTPUT_APK")"
+          printf '%s\n' "$VERIFY_OUTPUT"
+
+          normalize_sha256() {
+            printf '%s' "$1" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]:'
+          }
+          EXPECTED_CERT_SHA256="$(normalize_sha256 "$EXPECTED_CERT_SHA256")"
+          mapfile -t SIGNER_CERT_DIGESTS < <(
+            sed -n 's/^Signer #1 certificate SHA-256 digest: //p' <<< "$VERIFY_OUTPUT"
+          )
+          if [[ ${#SIGNER_CERT_DIGESTS[@]} -ne 1 ]] || grep -q '^Signer #2 ' <<< "$VERIFY_OUTPUT"; then
+            echo "Release APK must contain exactly one signer" >&2
+            exit 1
+          fi
+          ACTUAL_CERT_SHA256="$(normalize_sha256 "${SIGNER_CERT_DIGESTS[0]}")"
+          [[ "$ACTUAL_CERT_SHA256" =~ ^[0-9A-F]{64}$ ]] || {
+            echo "Signed APK certificate SHA-256 could not be read" >&2
+            exit 1
+          }
+          if [[ -z "$EXPECTED_CERT_SHA256" ]]; then
+            echo "Repository variable $CERT_VARIABLE_NAME is not configured." >&2
+            echo "Set it to this public signing certificate SHA-256, then rerun:" >&2
+            echo "$ACTUAL_CERT_SHA256" >&2
+            exit 1
+          fi
+          [[ "$EXPECTED_CERT_SHA256" =~ ^[0-9A-F]{64}$ ]] || {
+            echo "Expected signing certificate SHA-256 is not a 64-character hexadecimal digest" >&2
+            exit 1
+          }
+          if [[ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]]; then
+            echo "Signing certificate SHA-256 mismatch" >&2
+            echo "Expected: $EXPECTED_CERT_SHA256" >&2
+            echo "Actual:   ${ACTUAL_CERT_SHA256:-missing}" >&2
+            exit 1
+          fi
+
+          BADGING_OUTPUT="$("$AAPT2" dump badging "$OUTPUT_APK")"
+          PACKAGE_LINE="${BADGING_OUTPUT%%$'\n'*}"
+          ACTUAL_PACKAGE="$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" <<< "$PACKAGE_LINE")"
+          ACTUAL_VERSION_CODE="$(sed -n "s/.* versionCode='\([^']*\)'.*/\1/p" <<< "$PACKAGE_LINE")"
+          ACTUAL_VERSION_NAME="$(sed -n "s/.* versionName='\([^']*\)'.*/\1/p" <<< "$PACKAGE_LINE")"
+          [[ "$ACTUAL_PACKAGE" == "$EXPECTED_PACKAGE" ]] || {
+            echo "APK package mismatch: expected $EXPECTED_PACKAGE, got ${ACTUAL_PACKAGE:-missing}" >&2
+            exit 1
+          }
+          [[ "$ACTUAL_VERSION_CODE" == "$EXPECTED_VERSION_CODE" ]] || {
+            echo "APK versionCode mismatch: expected $EXPECTED_VERSION_CODE, got ${ACTUAL_VERSION_CODE:-missing}" >&2
+            exit 1
+          }
+          [[ "$ACTUAL_VERSION_NAME" == "$EXPECTED_VERSION_NAME" ]] || {
+            echo "APK versionName mismatch: expected $EXPECTED_VERSION_NAME, got ${ACTUAL_VERSION_NAME:-missing}" >&2
+            exit 1
+          }
+          if grep -q '^application-debuggable$' <<< "$BADGING_OUTPUT"; then
+            echo "Release APK must not be debuggable" >&2
+            exit 1
+          fi
+
+          READELF="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
+          [[ -x "$READELF" ]] || {
+            echo "llvm-readelf not found: $READELF" >&2
+            exit 1
+          }
+          NATIVE_DIR="$SIGNING_DIR/native"
+          mkdir -p "$NATIVE_DIR"
+          unzip -q "$OUTPUT_APK" 'lib/*/*.so' -d "$NATIVE_DIR"
+          mapfile -t NATIVE_LIBRARIES < <(find "$NATIVE_DIR/lib" -type f -name '*.so' -print | sort)
+          ((${#NATIVE_LIBRARIES[@]} > 0)) || {
+            echo "No native shared libraries found in release APK" >&2
+            exit 1
+          }
+          for library in "${NATIVE_LIBRARIES[@]}"; do
+            mapfile -t LOAD_ALIGNMENTS < <("$READELF" -lW "$library" | awk '$1 == "LOAD" {print $NF}')
+            ((${#LOAD_ALIGNMENTS[@]} > 0)) || {
+              echo "No ELF LOAD segments found in $library" >&2
+              exit 1
+            }
+            for alignment in "${LOAD_ALIGNMENTS[@]}"; do
+              [[ "$alignment" =~ ^0x[0-9A-Fa-f]+$ ]] || {
+                echo "Invalid ELF LOAD alignment $alignment in $library" >&2
+                exit 1
+              }
+              if ((alignment < 0x4000)); then
+                echo "ELF LOAD alignment below 16 KiB in $library: $alignment" >&2
+                exit 1
+              fi
+            done
+            echo "Verified 16 KiB ELF LOAD alignment: ${library#"$NATIVE_DIR/"}"
+          done
+
+          sha256sum "$OUTPUT_APK" > "${OUTPUT_APK}.sha256"
+          sha256sum --check "${OUTPUT_APK}.sha256"
+
+      - name: Upload verified APK artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: tonnet-browser-apk
-          path: tonnet-browser-*.apk
+          name: tonnet-browser-${{ needs.validate.outputs.package-version }}
+          path: |
+            tonnet-browser-*.apk
+            tonnet-browser-*.apk.sha256
+          if-no-files-found: error
+          retention-days: 14
 
-  # ─────────────────────────────────────────────
-  # Notify: Telegram
-  # ─────────────────────────────────────────────
-  notify:
-    needs: build
+  publish:
+    name: Publish Verified Release Assets
+    needs:
+      - validate
+      - build
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
-    if: success()
+    timeout-minutes: 10
+    permissions:
+      contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Download verified APK artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          fetch-depth: 2
+          name: tonnet-browser-${{ needs.validate.outputs.package-version }}
+          path: release-assets
 
+      - name: Re-verify artifact checksum
+        working-directory: release-assets
+        run: |
+          mapfile -t CHECKSUM_FILES < <(find . -maxdepth 1 -type f -name '*.apk.sha256' -print)
+          mapfile -t APK_FILES < <(find . -maxdepth 1 -type f -name '*.apk' -print)
+          if [[ ${#CHECKSUM_FILES[@]} -ne 1 || ${#APK_FILES[@]} -ne 1 ]]; then
+            echo "Expected exactly one APK and one checksum file" >&2
+            exit 1
+          fi
+          sha256sum --check "${CHECKSUM_FILES[0]}"
+
+      - name: Upload assets to GitHub Release
+        uses: softprops/action-gh-release@6cbd405e2c4e67a21c47fa9e383d020e4e28b836 # v2.3.3
+        with:
+          fail_on_unmatched_files: true
+          files: |
+            release-assets/tonnet-browser-*.apk
+            release-assets/tonnet-browser-*.apk.sha256
+
+  notify:
+    name: Notify Release
+    needs:
+      - validate
+      - publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: success() && github.event_name == 'release'
+
+    steps:
       - name: Send Telegram notification
+        continue-on-error: true
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          BUILD_RESULT: ${{ needs.build.result }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
         run: |
-          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+          if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
             echo "Telegram secrets not configured, skipping"
             exit 0
           fi
-          VERSION="${{ github.event.release.tag_name || 'dev' }}"
-          TEXT="✅ <b>[Mobile] Release ${VERSION}</b>"
-          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${VERSION}"
+
+          RELEASE_URL="${{ github.server_url }}/${{ github.repository }}/releases/tag/${RELEASE_VERSION}"
+          TEXT="✅ <b>[Mobile] Release ${RELEASE_VERSION}</b>"
           printf -v TEXT '%s\n<a href="%s">View release</a>' "$TEXT" "$RELEASE_URL"
-          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d chat_id="${TELEGRAM_CHAT_ID}" \
-            -d parse_mode="HTML" \
-            -d disable_web_page_preview="true" \
-            -d text="${TEXT}"
+          curl --fail-with-body --silent --show-error \
+            --request POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode chat_id="${TELEGRAM_CHAT_ID}" \
+            --data-urlencode parse_mode=HTML \
+            --data-urlencode disable_web_page_preview=true \
+            --data-urlencode text="${TEXT}"
