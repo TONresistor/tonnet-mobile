@@ -9,6 +9,14 @@
     "preview": "vite preview",
     "cap:sync": "npx cap sync android",
     "android": "npx cap open android",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome lint .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "tsc --noEmit",
+    "dead-code": "knip",
+    "check:scripts": "bash -n scripts/*.sh && shellcheck scripts/*.sh",
+    "check": "biome check . && npm run typecheck && npm run dead-code && npm run test:coverage && npm run check:scripts",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage"
@@ -21,6 +29,7 @@
     "npm": ">=10"
   },
   "dependencies": {
+    "@capacitor/app": "^8.0.0",
     "@capacitor/core": "^8.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -30,12 +39,11 @@
     "react-dom": "^19.2.3",
     "react-i18next": "^17.0.1",
     "tailwind-merge": "^3.4.0",
-    "tailwindcss": "^4.1.18",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.15",
     "@capacitor/android": "^8.0.0",
-    "@capacitor/app": "^8.0.0",
     "@capacitor/cli": "^8.0.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
@@ -44,9 +52,10 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
     "@vitest/coverage-v8": "^4.0.16",
-    "autoprefixer": "^10.4.23",
     "jsdom": "^27.4.0",
+    "knip": "^5.79.0",
     "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "vite": "^7.3.0",
     "vitest": "^4.0.16"

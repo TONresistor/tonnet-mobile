@@ -39,7 +39,8 @@
    CSS Variables for Dynamic Theming
    ============================================ */
 
-:root, [data-theme="resistance-dog"] {
+:root,
+[data-theme="resistance-dog"] {
   --background: #1e2a36;
   --background-secondary: #17212b;
   --foreground: #f5f5f5;
@@ -47,7 +48,7 @@
   --card-foreground: #f5f5f5;
   --popover: #232e3c;
   --popover-foreground: #f5f5f5;
-  --primary: #0098EA;
+  --primary: #0098ea;
   --primary-foreground: #ffffff;
   --secondary: #232e3c;
   --secondary-foreground: #f5f5f5;
@@ -68,7 +69,6 @@
   --info-foreground: #ffffff;
 }
 
-
 /* ============================================
    Base Styles
    ============================================ */
@@ -80,7 +80,7 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -89,36 +89,20 @@ body {
 #root {
   width: 100%;
   height: 100vh;
-  height: 100dvh;
+}
+
+@supports (height: 100dvh) {
+  #root {
+    height: 100dvh;
+  }
 }
 
 /* ============================================
    Spring Animation Easings
    ============================================ */
 
-.spring {
-  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
 .spring-smooth {
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-/* ============================================
-   Utility Classes
-   ============================================ */
-
-.no-select {
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.drag-region {
-  -webkit-app-region: drag;
-}
-
-.no-drag {
-  -webkit-app-region: no-drag;
 }
 
 /* ============================================
@@ -151,29 +135,12 @@ body {
   background: var(--muted-foreground);
 }
 
-
 /* ============================================
    Gradient Utilities
    ============================================ */
 
 .gradient-primary {
   background: linear-gradient(to right, var(--primary), var(--accent));
-}
-
-.gradient-primary-hover {
-  background: linear-gradient(to right, color-mix(in srgb, var(--primary) 80%, transparent), color-mix(in srgb, var(--accent) 80%, transparent));
-}
-
-.gradient-muted {
-  background: linear-gradient(to right, var(--muted), var(--background));
-}
-
-.gradient-connecting {
-  background: linear-gradient(to right, var(--muted), var(--card));
-}
-
-.gradient-card {
-  background: linear-gradient(to bottom, var(--card), var(--background));
 }
 
 /* ============================================
@@ -188,54 +155,11 @@ body {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-.safe-area-left {
-  padding-left: env(safe-area-inset-left);
-}
-
-.safe-area-right {
-  padding-right: env(safe-area-inset-right);
-}
-
-.safe-area-all {
-  padding-top: env(safe-area-inset-top);
-  padding-right: env(safe-area-inset-right);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-}
-
-/* ============================================
-   Tab Transitions
-   ============================================ */
-
-.tab-enter {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-.tab-enter-active {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 150ms ease-out, transform 150ms ease-out;
-}
-
-.tab-exit {
-  opacity: 1;
-}
-
-.tab-exit-active {
-  opacity: 0;
-  transition: opacity 100ms ease-in;
-}
-
 /* ============================================
    Touch Interactions
    ============================================ */
 
 @media (hover: none) and (pointer: coarse) {
-  .touch-feedback:active {
-    opacity: 0.7;
-  }
-
   button:active,
   [role="button"]:active {
     transform: scale(0.98);
@@ -246,19 +170,16 @@ body {
    Animations
    ============================================ */
 
-@keyframes pulse-glow {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-.animate-pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
 @keyframes progress-indeterminate {
-  0%   { transform: translateX(-100%) scaleX(0.3); }
-  50%  { transform: translateX(0%) scaleX(0.6); }
-  100% { transform: translateX(100%) scaleX(0.3); }
+  0% {
+    transform: translateX(-100%) scaleX(0.3);
+  }
+  50% {
+    transform: translateX(0%) scaleX(0.6);
+  }
+  100% {
+    transform: translateX(100%) scaleX(0.3);
+  }
 }
 
 .progress-bar-animation {

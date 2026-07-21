@@ -3,7 +3,7 @@
  * Uses a breakpoint of 768px (standard tablet/mobile boundary).
  */
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 const MOBILE_BREAKPOINT = 768
 
@@ -34,5 +34,3 @@ export function useIsMobile(): boolean {
 
   return isMobile
 }
-
-export default useIsMobile

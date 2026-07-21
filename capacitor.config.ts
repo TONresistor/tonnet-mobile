@@ -1,4 +1,4 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
   appId: 'com.tonnet.browser',
@@ -9,8 +9,8 @@ const config: CapacitorConfig = {
     // (e.g. Vanadium on GrapheneOS) which block HTTP iframes inside HTTPS pages
     // even with MIXED_CONTENT_ALWAYS_ALLOW. TON sites are loaded as HTTP iframes
     // through the local proxy, so the parent must also be HTTP.
-    androidScheme: 'http'
-  }
-};
+    androidScheme: 'http',
+  },
+}
 
-export default config;
+export default config

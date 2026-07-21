@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'com.diffplug.spotless'
 
 android {
     namespace = "com.tonnet.browser"
@@ -10,7 +11,6 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 4
         versionName "1.1.0-beta02"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
@@ -54,6 +54,11 @@ android {
         }
     }
 
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+    }
+
     flavorDimensions "channel"
     productFlavors {
         prod {
@@ -67,18 +72,31 @@ android {
     }
 }
 
+spotless {
+    java {
+        target 'src/main/java/**/*.java', 'src/test/java/**/*.java'
+        googleJavaFormat('1.24.0')
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+
+    format('gradle') {
+        target 'build.gradle'
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
 repositories {
     flatDir{
-        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+        dirs '../capacitor-cordova-android-plugins/src/main/libs'
     }
 }
 
 dependencies {
     // Include JAR files from libs directory
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-
-    // Include AAR files from libs directory (Go libraries compiled with gomobile)
-    implementation fileTree(include: ['*.aar'], dir: 'libs')
 
     // AndroidX dependencies
     implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
@@ -97,8 +115,6 @@ dependencies {
 
     // Testing
     testImplementation "junit:junit:$junitVersion"
-    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
-    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
 }
 
 apply from: 'capacitor.build.gradle'
