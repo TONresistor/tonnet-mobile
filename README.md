@@ -42,15 +42,20 @@ Enable "Install from unknown sources", then install. Requires Android 9.0+ (API 
 ## Build
 
 ```bash
-# Node.js 22+, Go 1.24+, Android SDK, NDK 27.1, Java 21
+# Node.js 22+, official Go 1.25.5, Android SDK 36, NDK 27.1, Java 21
 
 git clone https://github.com/TONresistor/tonnet-mobile.git
 cd tonnet-mobile
-npm install
+npm ci
 npm run build
-npx cap sync android
-cd android && ./gradlew assembleRelease
+npm run cap:sync
+./scripts/build-ton-proxy.sh
+cd android && ./gradlew spotlessCheck testProdDebugUnitTest lintBetaRelease assembleBetaRelease
 ```
+
+`package.json` is the source of truth for `versionName`. The proxy build is pinned to
+`TONresistor/Tonutils-Proxy v1.9.4`; see [`scripts/README.md`](scripts/README.md) for the complete
+toolchain and release commands.
 
 ## Stack
 

@@ -1,436 +1,107 @@
-# Tonnet Mobile - Build Scripts
+# Android native build
 
-This directory contains scripts for building the Go libraries required by Tonnet Browser Mobile.
+The Android application embeds a single native dependency: the arm64 shared library from
+[`TONresistor/Tonutils-Proxy`](https://github.com/TONresistor/Tonutils-Proxy). The build does not
+use `gomobile`, AAR wrappers, or `tonutils-storage`.
 
-## Go Libraries Overview
+## Supported toolchain
 
-Tonnet Browser Mobile requires the following Go libraries compiled as Android AAR files:
+| Tool | Required version |
+| --- | --- |
+| Node.js | 22 or newer |
+| Go | 1.25.5 exactly (`GOTOOLCHAIN=local`, `GOEXPERIMENT=nodwarf5`) |
+| Java | 21 or newer |
+| Android platform / target SDK | 36 |
+| Android min SDK | 28 |
+| Android NDK | 27.1.12297006 |
+| CMake | 3.18.1 |
 
-| Library | Repository | Purpose |
-|---------|------------|---------|
-| tonutils-proxy.aar | [xssnick/Tonutils-Proxy](https://github.com/xssnick/Tonutils-Proxy) | TON Proxy for .ton domain resolution |
-| tonutils-storage.aar | [xssnick/tonutils-storage](https://github.com/xssnick/tonutils-storage) | TON Storage for decentralized file storage |
+The app ships only `arm64-v8a`. The proxy source is fixed to `v1.9.4` at commit
+`c071d9e40521cd92b99aecc58d3337ea50f51bc2`; the build fails if the tag resolves to anything
+else. After that verification, the repository-owned
+`scripts/patches/tonutils-proxy-v1.9.4-mobile.patch` is applied. It synchronizes the process-wide
+native lifecycle, reserves startup tokens atomically, makes an interrupted startup return
+`CANCELLED`, exposes a health check, and bounds native shutdown to ten seconds. This prevents a
+timed-out JNI call from hanging or stopping a newer proxy generation.
 
----
+## Environment setup
 
-## Prerequisites
-
-### Quick Setup (Recommended)
-
-Use the automated setup script:
+For a command-line installation of SDK 36, Build Tools 36.0.0, NDK 27.1, and CMake 3.18.1:
 
 ```bash
-# Make executable
-chmod +x scripts/setup-android-sdk.sh
-
-# Run the setup
-./scripts/setup-android-sdk.sh
-
-# Source the environment variables
+./scripts/setup-android-sdk.sh --minimal
 source scripts/env.sh
+verify_android_sdk
 ```
 
-### Manual Setup
+The setup script writes machine-specific SDK paths to the ignored
+`scripts/env.local.sh`. The tracked `scripts/env.sh` remains unchanged and loads that local file
+when present. The optional `.envrc` created for direnv is also ignored by Git.
 
-#### 1. Install Go (1.21+)
-
-**Fedora/RHEL:**
-```bash
-sudo dnf install golang
-```
-
-**Ubuntu/Debian:**
-```bash
-sudo apt install golang-go
-```
-
-**macOS:**
-```bash
-brew install go
-```
-
-**Verify installation:**
-```bash
-go version
-# Expected: go version go1.21.x or higher
-```
-
-#### 2. Install gomobile
+If the SDK is already installed, export the paths directly:
 
 ```bash
-go install golang.org/x/mobile/cmd/gomobile@latest
-gomobile init
+export ANDROID_HOME=/path/to/Android/Sdk
+export ANDROID_SDK_ROOT="$ANDROID_HOME"
+export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.1.12297006"
 ```
 
-**Verify installation:**
-```bash
-gomobile version
-```
+`android/local.properties` is machine-specific and must not be committed.
 
-**Troubleshooting:** If `gomobile` command is not found, add Go bin to PATH:
-```bash
-export PATH=$PATH:$(go env GOPATH)/bin
-# Add this to your ~/.bashrc or ~/.zshrc for persistence
-```
-
-#### 3. Install Android SDK (Without Android Studio)
-
-See [Android SDK Best Practices 2025](#android-sdk-best-practices-2025) below for detailed instructions.
-
-**Quick Command Line Setup:**
-```bash
-# Download command-line tools from https://developer.android.com/studio#command-tools
-# Extract and set up correct directory structure
-
-mkdir -p ~/Android/Sdk/cmdline-tools
-unzip commandlinetools-linux-*.zip -d /tmp/
-mv /tmp/cmdline-tools ~/Android/Sdk/cmdline-tools/latest
-
-# Set environment variables (or use scripts/env.sh)
-source scripts/env.sh
-
-# Accept licenses and install required components
-sdkmanager --licenses
-sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;27.1.12297006"
-```
-
-#### 4. Install Android NDK
-
-**Recommended NDK Version (2025):** `27.1.12297006`
-
-This version is compatible with:
-- gomobile (with `-androidapi 21` or higher)
-- React Native New Architecture
-- Capacitor 8+
+## Build the proxy
 
 ```bash
-# Using sdkmanager
-sdkmanager "ndk;27.1.12297006"
+./scripts/build-ton-proxy.sh
 ```
 
-**Verify NDK:**
-```bash
-ls $ANDROID_NDK_HOME
-# Should show: build, meta, ndk-build, prebuilt, etc.
-```
+The script:
 
----
+- fetches the pinned tag into an isolated directory below `${TMPDIR:-/tmp}`;
+- verifies the exact Git commit before compilation;
+- applies the deterministic, version-specific mobile lifecycle patch;
+- verifies Go modules, then cross-compiles only Android arm64 API 28 with CGO;
+- links native LOAD segments for 16 KiB Android memory pages;
+- installs `android/app/libs/jniLibs/arm64-v8a/libtonutils-proxy.so`;
+- requires the reproducible SHA-256
+  `59ef357356cc3720a3854c3ec32e79834b8c0c59fd7c4ed3404fa4258ada643d`.
 
-## Android SDK Best Practices 2025
+Use `--clean` to discard the isolated checkout first. Cleanup is allowed only when the directory
+contains the build-root marker created by this script, so an accidental `TON_PROXY_BUILD_DIR`
+cannot delete an unrelated directory. The variable can relocate the checkout without changing the
+output path. The `.so` is generated and ignored by Git.
 
-### Directory Structure
-
-The recommended Android SDK directory structure in 2025:
-
-```
-$ANDROID_HOME/                          # ~/Android/Sdk
-├── build-tools/
-│   └── 35.0.0/
-├── cmdline-tools/
-│   └── latest/                         # IMPORTANT: use "latest" subfolder
-│       └── bin/
-│           ├── sdkmanager
-│           ├── avdmanager
-│           └── ...
-├── emulator/
-├── licenses/
-├── ndk/
-│   └── 27.1.12297006/                  # NDK installed via sdkmanager
-├── platform-tools/
-│   ├── adb
-│   ├── fastboot
-│   └── ...
-├── platforms/
-│   └── android-35/
-└── system-images/                      # For emulators (optional)
-```
-
-### Environment Variables
-
-**Important:** `ANDROID_HOME` is deprecated but still widely used. `ANDROID_SDK_ROOT` is the replacement, but many tools still rely on `ANDROID_HOME`.
-
-**Recommendation (2025):** Set BOTH variables for maximum compatibility.
+## Build and verify the app
 
 ```bash
-# Primary (new standard)
-export ANDROID_SDK_ROOT="$HOME/Android/Sdk"
-
-# Legacy (for compatibility with older tools)
-export ANDROID_HOME="$ANDROID_SDK_ROOT"
-
-# NDK location (required for gomobile)
-export ANDROID_NDK_HOME="$ANDROID_SDK_ROOT/ndk/27.1.12297006"
-
-# PATH additions
-export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$PATH"
-export PATH="$ANDROID_SDK_ROOT/platform-tools:$PATH"
-export PATH="$ANDROID_SDK_ROOT/emulator:$PATH"
+npm ci
+npm run build
+npm run cap:sync
+./scripts/build-ton-proxy.sh
+cd android
+./gradlew spotlessCheck testProdDebugUnitTest lintProdDebug assembleProdDebug
 ```
 
-Use `scripts/env.sh` for a ready-to-use configuration.
+For the current pre-release, use `lintBetaRelease assembleBetaRelease`. Stable versions use
+`lintProdRelease assembleProdRelease`. Gradle reads `versionName` directly from the root
+`package.json`; `versionCode` remains an explicit Android value in `android/app/build.gradle`.
 
-### NDK Version Selection Guide
+## Publish a release
 
-| Use Case | Recommended NDK | Notes |
-|----------|-----------------|-------|
-| gomobile (2025) | 27.1.12297006 | Use `-androidapi 21` or higher |
-| React Native 0.76+ | 27.1.12297006 | Required for New Architecture |
-| Capacitor 8+ | 26.x or 27.x | Generally more flexible |
-| Legacy projects | 25.2.9519653 | For API 19 support |
+Use `v<package-version>` for the Git tag; the APK itself is named
+`tonnet-browser-<package-version>.apk`. A beta tag such as `v1.1.1-beta` must be published as a
+GitHub pre-release and must point to a commit on the default branch.
 
-**Note:** NDK 27+ requires minimum API level 21 (Android 5.0 Lollipop). This is fine for modern apps as Google Play requires API 24+ for new apps.
-
-### gomobile Compatibility Notes
-
-Modern gomobile versions have been updated to work with newer NDKs. Key points:
-
-1. **API Level:** Use `-androidapi 21` or higher (NDK 27+ dropped support for API < 21)
-2. **NDK Path:** Modern gomobile auto-detects NDK from `$ANDROID_SDK_ROOT/ndk/<version>` or `$ANDROID_NDK_HOME`
-3. **Architecture:** Build for all ABIs by default, or specify `-target=android/arm64` for arm64-only
-
-```bash
-# Recommended gomobile command for 2025
-gomobile bind -target=android -androidapi 24 -o output.aar ./package
-```
-
----
-
-## Capacitor Configuration
-
-### local.properties
-
-The `android/local.properties` file is auto-generated and should NOT be committed to version control. It contains machine-specific paths:
-
-```properties
-sdk.dir=/home/username/Android/Sdk
-```
-
-To generate it manually:
-```bash
-echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
-```
-
-### variables.gradle
-
-The `android/variables.gradle` file controls SDK versions for Capacitor:
-
-```gradle
-ext {
-    minSdkVersion = 24          # Minimum Android 7.0
-    compileSdkVersion = 35      # Latest stable SDK
-    targetSdkVersion = 35       # Target latest for Google Play compliance
-    // ... other versions
-}
-```
-
-**Note:** Capacitor major versions are tied to target SDK versions. Only update target SDK with Capacitor upgrades.
-
----
-
-## Building Libraries
-
-### Automated Build
-
-```bash
-# Source environment first
-source scripts/env.sh
-
-# Run the build script
-./scripts/build-go-libs.sh
-```
-
-**Options:**
-```bash
-./scripts/build-go-libs.sh --help         # Show help
-./scripts/build-go-libs.sh --clean        # Clean temp directory before build
-./scripts/build-go-libs.sh --proxy-only   # Build only tonutils-proxy.aar
-./scripts/build-go-libs.sh --storage-only # Build only tonutils-storage.aar
-```
-
-### Manual Build
-
-#### tonutils-proxy
-
-```bash
-# Clone repository
-git clone https://github.com/xssnick/Tonutils-Proxy
-cd Tonutils-Proxy
-
-# Build using Makefile (if available)
-make build-android-lib
-
-# Or using gomobile directly (API 24 for NDK 27+ compatibility)
-gomobile bind -target=android -androidapi 24 -o tonutils-proxy.aar ./mobile
-
-# Copy to project
-cp tonutils-proxy.aar /path/to/tonnet-mobile/android/app/libs/
-```
-
-#### tonutils-storage
-
-```bash
-# Clone repository
-git clone https://github.com/xssnick/tonutils-storage
-cd tonutils-storage
-
-# Build mobile bindings
-cd mobile  # or create mobile package if not exists
-gomobile bind -target=android -androidapi 24 -o tonutils-storage.aar .
-
-# Copy to project
-cp tonutils-storage.aar /path/to/tonnet-mobile/android/app/libs/
-```
-
----
-
-## Output
-
-After successful build, you will find the AAR files in:
-```
-android/app/libs/
-  tonutils-proxy.aar
-  tonutils-storage.aar
-```
-
-## Verifying AAR Files
-
-```bash
-# List contents of AAR
-unzip -l android/app/libs/tonutils-proxy.aar
-
-# Check size (typically 10-50 MB each)
-du -h android/app/libs/*.aar
-```
-
----
-
-## Integration with Android Project
-
-The `android/app/build.gradle` is already configured to include AAR files:
-
-```gradle
-dependencies {
-    implementation fileTree(include: ['*.aar'], dir: 'libs')
-}
-```
-
-After building the libraries:
-
-```bash
-# Sync Capacitor
-npx cap sync android
-
-# Build Android app
-cd android && ./gradlew assembleDebug
-```
-
----
+Before the first release signed by a new key, run the `Build Release APK` workflow manually with
+the matching channel. If its certificate repository variable is absent, the workflow signs the
+APK, prints the public SHA-256 fingerprint, and stops before upload. Save that fingerprint as
+`ANDROID_BETA_SIGNING_CERT_SHA256` or `ANDROID_PROD_SIGNING_CERT_SHA256`, then rerun. Later builds
+fail closed if the signer changes.
 
 ## Troubleshooting
 
-### gomobile: command not found
-
-```bash
-export PATH=$PATH:$(go env GOPATH)/bin
-```
-
-### NDK not found
-
-```bash
-# Check available NDKs
-ls $ANDROID_SDK_ROOT/ndk/
-
-# Install specific version
-sdkmanager "ndk;27.1.12297006"
-
-# Update ANDROID_NDK_HOME
-export ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.1.12297006
-```
-
-### "unsupported API version 16 (not in 21..35)"
-
-Modern NDKs (25+) dropped support for older API levels. Fix:
-```bash
-# Use API 21 or higher
-gomobile bind -target=android -androidapi 21 -o output.aar ./package
-```
-
-### Build fails with "cannot find package"
-
-```bash
-# Update Go modules
-cd /tmp/tonnet-go-libs/Tonutils-Proxy
-go mod tidy
-go mod download
-```
-
-### AAR too large
-
-The AAR files include native libraries for multiple architectures. To reduce size for testing:
-
-```bash
-# Build for specific architecture only
-gomobile bind -target=android/arm64 -androidapi 24 -o output.aar ./...
-```
-
-### Permission denied on build script
-
-```bash
-chmod +x scripts/build-go-libs.sh
-chmod +x scripts/setup-android-sdk.sh
-```
-
-### ANDROID_HOME vs ANDROID_SDK_ROOT confusion
-
-Both variables point to the same location. Set both for maximum compatibility:
-```bash
-source scripts/env.sh
-```
-
----
-
-## CI/CD Integration
-
-For GitHub Actions, see the workflow in `.github/workflows/build-android.yml`.
-
-Required secrets:
-- None for unsigned APK
-- `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` for signed release
-
-### CI Environment Variables
-
-```yaml
-env:
-  ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
-  ANDROID_HOME: ${{ runner.temp }}/android-sdk
-  ANDROID_NDK_HOME: ${{ runner.temp }}/android-sdk/ndk/27.1.12297006
-```
-
----
-
-## Links and References
-
-### Official Documentation
-- [Android Command-line Tools](https://developer.android.com/tools)
-- [sdkmanager Documentation](https://developer.android.com/tools/sdkmanager)
-- [Environment Variables](https://developer.android.com/tools/variables)
-- [NDK Downloads](https://developer.android.com/ndk/downloads)
-- [gomobile Documentation](https://pkg.go.dev/golang.org/x/mobile/cmd/gomobile)
-
-### Project Dependencies
-- [tonutils-proxy](https://github.com/xssnick/Tonutils-Proxy)
-- [tonutils-storage](https://github.com/xssnick/tonutils-storage)
-
-### Capacitor & React Native
-- [Capacitor Android Documentation](https://capacitorjs.com/docs/android)
-- [Capacitor Environment Setup](https://capacitorjs.com/docs/getting-started/environment-setup)
-- [React Native New Architecture](https://docs.expo.dev/guides/new-architecture/)
-
----
-
-## Version History
-
-| Date | Changes |
-|------|---------|
-| 2025-12 | Updated for 2025 best practices: NDK 27.x, ANDROID_SDK_ROOT, API 24+ |
-| 2025-01 | Initial version with NDK 25.x |
+- `Android arm64 compiler not found`: install NDK `27.1.12297006` and verify
+  `ANDROID_NDK_HOME`.
+- `Go 1.25.5 is required exactly`: install that toolchain; `gomobile` is not needed.
+- `source verification failed`: remove the isolated checkout with
+  `./scripts/build-ton-proxy.sh --clean`. Do not bypass the commit check.
+- CMake cannot find `libtonutils-proxy.so`: run the proxy build before Gradle.
