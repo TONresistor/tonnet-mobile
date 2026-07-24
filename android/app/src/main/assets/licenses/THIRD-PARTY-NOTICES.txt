@@ -1,0 +1,41 @@
+TONNET Browser Mobile - Third-Party Notices
+
+This APK contains open-source components under their respective licenses.
+The complete, buildable Corresponding Source is the TONNET Mobile repository,
+including the pinned revisions and mobile patch used by the build script.
+
+AndroidX, Material Components for Android, BlurView and Kotlin
+  Role: Android application runtime
+  License: Apache License 2.0
+  License file: Apache-2.0.txt
+
+BlurView
+  Version: 3.2.0
+  Revision: e81564e1338d962b7050336c56917cff26e96c3c
+  Role: Android 12+ TabBar blur
+  Source: https://github.com/Dimezis/BlurView
+  License: Apache License 2.0
+  License file: Apache-2.0.txt
+
+TONresistor/Tonutils-Proxy
+  Revision: 43c104b25ec8ddd82b38ace3f1ebb239ac88ad21
+  Role: local TON HTTP proxy
+  License: MIT
+  License file: MIT-Tonutils-Proxy.txt
+
+xssnick/tonutils-go
+  Version: v1.17.2 (selected by the pinned proxy revision)
+  Role: TON DHT, ADNL and RLDP implementation
+  License: MIT
+  License file: MIT-tonutils-go.txt
+
+ton-blockchain/adnl-tunnel
+  Version: v0.2.0 (selected by the pinned proxy revision)
+  Role: optional encrypted two-hop tunnel
+  License: GNU General Public License version 3
+  License file: GPL-3.0.txt
+
+Because the APK links the GPL-3.0 tunnel implementation, redistribution of the
+combined APK is subject to the GPL-3.0 terms. The original TONNET application
+source remains offered under MIT; third-party terms still apply to the combined
+binary.

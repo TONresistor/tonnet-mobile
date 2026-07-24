@@ -1,0 +1,106 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+def repositoryRoot = rootProject.projectDir.parentFile
+def nativeBuildScript = new File(repositoryRoot, 'scripts/build-android-tonproxy.sh')
+def generatedJniLibs = layout.buildDirectory.dir('generated/jniLibs')
+def generatedJniLibsPath = generatedJniLibs.get().asFile.absolutePath
+def correspondingSourceOutput = providers.environmentVariable('SOURCE_BUNDLE_OUTPUT')
+def runGovulncheck = providers.environmentVariable('TONNET_RUN_GOVULNCHECK').orElse('0')
+
+android {
+    namespace = 'com.tonnet.proxy'
+    compileSdk = 36
+    ndkVersion = '28.2.13676358'
+
+    defaultConfig {
+        minSdk = 28
+        consumerProguardFiles 'consumer-rules.pro'
+        ndk {
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=none', "-DTON_PROXY_JNI_LIBS_DIR=${generatedJniLibsPath}"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file('src/main/cpp/CMakeLists.txt')
+            version = '3.22.1'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    buildFeatures {
+        aidl = true
+    }
+
+    lint {
+        warningsAsErrors = true
+        disable 'GradleDependency'
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDir generatedJniLibs
+        }
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+}
+
+def buildNativeProxy = tasks.register('buildNativeProxy', Exec) {
+    group = 'build'
+    description = 'Builds and tests the pinned TON proxy libraries.'
+
+    inputs.file nativeBuildScript
+    inputs.file new File(repositoryRoot, 'scripts/patches/tonutils-mobile.patch')
+    inputs.file new File(repositoryRoot, 'scripts/patches/tonutils-lifecycle.patch')
+    inputs.file new File(repositoryRoot, 'scripts/patches/tonutils-mobile-hardening.patch')
+    inputs.file new File(repositoryRoot, 'scripts/patches/adnl-tunnel-v0.2.0-mobile.patch')
+    inputs.file new File(repositoryRoot, 'native/tonproxy/main.go')
+    inputs.file new File(repositoryRoot, 'native/tonproxy/main_test.go')
+    inputs.files fileTree(new File(repositoryRoot, 'native/tonproxy/upstream-tests'))
+    inputs.property 'sourceBundleOutput', correspondingSourceOutput.orElse('')
+    inputs.property 'runGovulncheck', runGovulncheck
+    outputs.file new File(generatedJniLibsPath, 'arm64-v8a/libtonutils-proxy.so')
+    outputs.file new File(generatedJniLibsPath, 'x86_64/libtonutils-proxy.so')
+    if (correspondingSourceOutput.isPresent()) {
+        outputs.file file(correspondingSourceOutput.get())
+    }
+    outputs.upToDateWhen { runGovulncheck.get() != '1' }
+
+    environment 'ANDROID_NDK_HOME', new File(android.sdkDirectory, "ndk/${android.ndkVersion}").absolutePath
+    environment 'TONNET_JNI_OUTPUT_ROOT', generatedJniLibsPath
+    environment 'TONNET_RUN_GOVULNCHECK', runGovulncheck.get()
+    commandLine 'bash', nativeBuildScript.absolutePath
+}
+
+tasks.named('preBuild').configure { dependsOn buildNativeProxy }
+tasks.configureEach { task ->
+    if (task.name.startsWith('configureCMake') || task.name.startsWith('buildCMake')) {
+        task.dependsOn buildNativeProxy
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.18.0'
+    testImplementation 'junit:junit:4.13.2'
+}

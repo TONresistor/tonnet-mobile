@@ -1,0 +1,393 @@
+diff --git a/proxy/proxy.go b/proxy/proxy.go
+index e8bcf7d..6369da5 100644
+--- a/proxy/proxy.go
++++ b/proxy/proxy.go
+@@ -32,7 +32,6 @@ import (
+ 	"os"
+ 	"runtime"
+ 	"strings"
+-	"sync/atomic"
+ 	"time"
+ )
+ 
+@@ -80,6 +79,79 @@ func delHopHeaders(header http.Header) {
+ 	}
+ }
+ 
++func canonicalTONHost(rawHost string) (string, bool) {
++	host := strings.TrimSpace(strings.ToLower(rawHost))
++	if host == "" || len(host) > 253 {
++		return "", false
++	}
++
++	if parsedHost, port, err := net.SplitHostPort(host); err == nil {
++		if port != "80" {
++			return "", false
++		}
++		host = parsedHost
++	} else if strings.Contains(host, ":") {
++		return "", false
++	}
++
++	host = strings.TrimSuffix(host, ".")
++	if net.ParseIP(host) != nil {
++		return "", false
++	}
++
++	var name string
++	switch {
++	case strings.HasSuffix(host, ".ton"):
++		name = strings.TrimSuffix(host, ".ton")
++	case strings.HasSuffix(host, ".adnl"):
++		name = strings.TrimSuffix(host, ".adnl")
++	case strings.HasSuffix(host, ".t.me"):
++		name = strings.TrimSuffix(host, ".t.me")
++	default:
++		return "", false
++	}
++	if name == "" {
++		return "", false
++	}
++
++	for _, label := range strings.Split(name, ".") {
++		if label == "" || len(label) > 63 {
++			return "", false
++		}
++		for _, char := range label {
++			if !((char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char == '-' || char == '_') {
++				return "", false
++			}
++		}
++	}
++	return host, true
++}
++
++func applyPrivacyHeaders(header http.Header) {
++	for name := range header {
++		if strings.HasPrefix(strings.ToLower(name), "sec-ch-") {
++			header.Del(name)
++		}
++	}
++	for _, name := range []string{
++		"Device-Memory",
++		"Downlink",
++		"DPR",
++		"ECT",
++		"RTT",
++		"Save-Data",
++		"Viewport-Width",
++		"Width",
++		"X-Requested-With",
++		"X-Tonutils-Proxy",
++	} {
++		header.Del(name)
++	}
++	header.Del("Referer")
++	header.Set("DNT", "1")
++	header.Set("Sec-GPC", "1")
++}
++
+ type proxy struct {
+ 	version       string
+ 	blockHttp     bool
+@@ -104,12 +158,31 @@ func (p *proxy) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
+ 		req.URL.Scheme = "http"
+ 	}
+ 
+-	if req.URL.Scheme != "http" && req.URL.Scheme != "https" {
++	if req.URL.Scheme != "http" {
+ 		msg := "unsupported protocol scheme " + req.URL.Scheme
+ 		http.Error(wr, msg, http.StatusBadRequest)
+ 		return
+ 	}
+ 
++	rawHost := req.URL.Host
++	if rawHost == "" {
++		rawHost = req.Host
++	}
++	host, ok := canonicalTONHost(rawHost)
++	if !ok {
++		http.Error(wr, "Only canonical .ton, .adnl and .t.me hosts are allowed", http.StatusForbidden)
++		return
++	}
++	if req.Host != "" {
++		requestHost, requestHostOK := canonicalTONHost(req.Host)
++		if !requestHostOK || requestHost != host {
++			http.Error(wr, "Host mismatch", http.StatusBadRequest)
++			return
++		}
++	}
++	req.Host = host
++	req.URL.Host = host
++
+ 	//http: Request.RequestURI can't be set in client requests.
+ 	//http://golang.org/src/pkg/net/http/client.go
+ 	req.RequestURI = ""
+@@ -117,45 +190,32 @@ func (p *proxy) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
+ 	delHopHeaders(req.Header)
+ 
+ 	req.Header.Set("X-Tonutils-Proxy", p.version)
++	applyPrivacyHeaders(req.Header)
+ 
+ 	// Resolve multi-chain domains (e.g. .eth) to .adnl before routing
+-	host := req.Host
+-	if h, _, err := net.SplitHostPort(host); err == nil {
+-		host = h
++	resolverHost := req.Host
++	if h, _, err := net.SplitHostPort(resolverHost); err == nil {
++		resolverHost = h
+ 	}
+-	if len(host) > 253 {
++	if len(resolverHost) > 253 {
+ 		http.Error(wr, "invalid host", http.StatusBadRequest)
+ 		return
+ 	}
+-	if p.multiResolver != nil && p.multiResolver.Supports(host) {
+-		newHost, err := p.multiResolver.ResolveToADNL(host)
++	if p.multiResolver != nil && p.multiResolver.Supports(resolverHost) {
++		newHost, err := p.multiResolver.ResolveToADNL(resolverHost)
+ 		if err != nil {
+-			http.Error(wr, fmt.Sprintf("Failed to resolve %s: %v", host, err), http.StatusBadGateway)
++			http.Error(wr, fmt.Sprintf("Failed to resolve %s: %v", resolverHost, err), http.StatusBadGateway)
+ 			return
+ 		}
+-		log.Debug().Str("domain", host).Str("adnl", newHost).Msg("multi-chain resolved")
++		log.Debug().Str("domain", resolverHost).Str("adnl", newHost).Msg("multi-chain resolved")
+ 		// Keep the original Host header (e.g. "tonnet.eth") so the remote
+ 		// server's nginx can match its server_name. Only rewrite URL.Host
+ 		// so the RLDP transport routes to the correct .adnl address.
+ 		req.URL.Host = newHost
+ 	}
+ 
+-	var c = http.DefaultClient
+-	urlHost := req.URL.Host
+-	if strings.HasSuffix(req.Host, ".ton") || strings.HasSuffix(req.Host, ".adnl") ||
+-		strings.HasSuffix(req.Host, ".t.me") || strings.HasSuffix(req.Host, ".bag") ||
+-		strings.HasSuffix(urlHost, ".adnl") {
+-		log.Debug().Str("method", req.Method).Str("url", req.URL.String()).Msg("over rldp")
+-		// proxy requests to ton using special client
+-		c = client
+-	} else {
+-		if p.blockHttp {
+-			http.Error(wr, "HTTP Not allowed", http.StatusBadRequest)
+-			return
+-		}
+-
+-		log.Debug().Str("method", req.Method).Str("url", req.URL.String()).Msg("over http")
+-	}
++	c := client
++	log.Debug().Str("method", req.Method).Str("host", req.Host).Msg("over rldp")
+ 
+ 	resp, err := c.Do(req)
+ 	if err != nil {
+@@ -241,7 +301,7 @@ var OnAskReroute = func() bool { return false }
+ 
+ var OnTunnelStopped = func() {}
+ 
+-func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.PrivateKey, res chan<- State, blockHttp bool, versionAndDevice string, lsCfg *liteclient.GlobalConfig, tunCfg *tunnelConfig.ClientConfig, customTunNetCfg *liteclient.GlobalConfig, multiChainCfg *MultiChainConfig, forwards []Forward) error {
++func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.PrivateKey, res chan<- State, blockHttp bool, versionAndDevice string, lsCfg *liteclient.GlobalConfig, tunCfg *tunnelConfig.ClientConfig, customTunNetCfg *liteclient.GlobalConfig, multiChainCfg *MultiChainConfig, forwards []Forward, suppliedListeners ...net.Listener) error {
+ 	report := func(s State) {
+ 		if res != nil {
+ 			res <- s
+@@ -546,27 +606,27 @@ func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.
+ 		server.Shutdown(shutCtx)
+ 	}()
+ 
+-	var failed atomic.Bool
+-	go func() {
+-		// wait for server start
+-		time.Sleep(1 * time.Second)
+-		if failed.Load() {
+-			return
++	var listener net.Listener
++	if len(suppliedListeners) > 0 && suppliedListeners[0] != nil {
++		listener = suppliedListeners[0]
++	} else {
++		listener, err = net.Listen("tcp4", addr)
++		if err != nil {
++			return fmt.Errorf("failed to bind HTTP proxy: %w", err)
+ 		}
++	}
+ 
+-		report(State{
+-			Type:  "ready",
+-			State: "Ready",
+-		})
+-	}()
++	report(State{
++		Type:  "ready",
++		State: "Ready",
++	})
+ 
+-	err = server.ListenAndServe()
++	err = server.Serve(listener)
+ 	if errors.Is(err, http.ErrServerClosed) {
+ 		err = nil
+ 	}
+ 
+ 	if err != nil {
+-		failed.Store(true)
+ 		if strings.Contains(err.Error(), "address already in use") {
+ 			err = fmt.Errorf("cannot start server, port %s is already in use by another application", addr)
+ 		}
+diff --git a/proxy/transport/client.go b/proxy/transport/client.go
+index a13c543..d6ce8f4 100644
+--- a/proxy/transport/client.go
++++ b/proxy/transport/client.go
+@@ -89,6 +89,42 @@ type ADNL interface {
+ type bagInfo struct {
+ 	torrent    *storage.Torrent
+ 	downloader storage.TorrentDownloader
++	stop       context.CancelFunc
++}
++
++func (b *bagInfo) close() {
++	b.downloader.Close()
++	b.stop()
++	b.torrent.Stop()
++}
++
++type downloaderResult struct {
++	downloader storage.TorrentDownloader
++	err        error
++}
++
++func createPersistentDownloader(requestCtx, globalCtx context.Context, create func(context.Context) (storage.TorrentDownloader, error)) (storage.TorrentDownloader, context.CancelFunc, error) {
++	downloaderCtx, stop := context.WithCancel(globalCtx)
++	result := make(chan downloaderResult, 1)
++	go func() {
++		downloader, err := create(downloaderCtx)
++		result <- downloaderResult{downloader: downloader, err: err}
++	}()
++
++	select {
++	case res := <-result:
++		if res.err != nil {
++			stop()
++			return nil, nil, res.err
++		}
++		return res.downloader, stop, nil
++	case <-requestCtx.Done():
++		stop()
++		return nil, nil, requestCtx.Err()
++	case <-globalCtx.Done():
++		stop()
++		return nil, nil, globalCtx.Err()
++	}
+ }
+ 
+ var newRLDP = func(a ADNL) RLDP {
+@@ -173,10 +209,19 @@ func (t *Transport) cleaner() {
+ 							delete(t.activeSites, s)
+ 						}
+ 						t.mx.Unlock()
+-						act.downloader.Close()
+-						act.torrent.Stop()
++						act.close()
++						t.store.RemoveTorrent(act.torrent)
+ 
+ 						log.Debug().Hex("bag_id", act.torrent.BagID).Msg("stopped unused bag")
++					case *rldpInfo:
++						t.mx.Lock()
++						if t.activeSites[s] == info {
++							delete(t.activeSites, s)
++						}
++						t.mx.Unlock()
++						if act.ActiveClient != nil {
++							act.destroyClient(act.ActiveClient)
++						}
+ 					}
+ 				}
+ 				info.mx.Unlock()
+@@ -779,21 +824,28 @@ func storageBagFromDomain(domain *dns.Domain) []byte {
+ }
+ 
+ // startBag starts a TON Storage bag and returns its bagInfo actor.
+-func (t *Transport) startBag(id []byte, host string) (*bagInfo, error) {
++func (t *Transport) startBag(ctx context.Context, id []byte, host string) (*bagInfo, error) {
+ 	log.Info().Str("bag_id", hex.EncodeToString(id)).Str("host", host).Msg("searching for bag id")
+ 
+ 	torrent := storage.NewTorrent("", t.store, t.storageConnector)
+ 	torrent.BagID = id
+ 
+-	_ = t.store.SetTorrent(torrent)
++	if err := t.store.SetTorrent(torrent); err != nil {
++		return nil, fmt.Errorf("failed to register storage bag %s, err: %w", host, err)
++	}
+ 
+ 	if err := torrent.Start(true, false, false); err != nil {
++		t.store.RemoveTorrent(torrent)
+ 		return nil, fmt.Errorf("failed to start bag %s, err: %w", host, err)
+ 	}
+ 	log.Info().Str("bag_id", hex.EncodeToString(id)).Str("host", host).Msg("starting for bag id")
+ 
+-	downloader, err := t.storageConnector.CreateDownloader(t.globalCtx, torrent)
++	downloader, stop, err := createPersistentDownloader(ctx, t.globalCtx, func(downloaderCtx context.Context) (storage.TorrentDownloader, error) {
++		return t.storageConnector.CreateDownloader(downloaderCtx, torrent)
++	})
+ 	if err != nil {
++		torrent.Stop()
++		t.store.RemoveTorrent(torrent)
+ 		return nil, fmt.Errorf("failed to create downloader for storage bag of %s, err: %w", host, err)
+ 	}
+ 
+@@ -801,6 +853,7 @@ func (t *Transport) startBag(id []byte, host string) (*bagInfo, error) {
+ 	return &bagInfo{
+ 		torrent:    torrent,
+ 		downloader: downloader,
++		stop:       stop,
+ 	}, nil
+ }
+ 
+@@ -871,7 +924,7 @@ func (t *Transport) resolve(ctx context.Context, host string) (_ any, err error)
+ 	}
+ 
+ 	if inStorage {
+-		return t.startBag(id, host)
++		return t.startBag(ctx, id, host)
+ 	}
+ 
+ 	log.Info().Str("host", host).Str("node", hex.EncodeToString(id)).Msg("resolving ton site address")
+@@ -883,7 +936,7 @@ func (t *Transport) resolve(ctx context.Context, host string) (_ any, err error)
+ 	if err != nil {
+ 		if bag := storageBagFromDomain(domain); bag != nil {
+ 			log.Warn().Str("host", host).Err(err).Msg("ADNL site not found in DHT, falling back to TON Storage record")
+-			return t.startBag(bag, host)
++			return t.startBag(ctx, bag, host)
+ 		}
+ 		return nil, fmt.Errorf("failed to find address of %s (%s) in DHT, err: %w", host, hex.EncodeToString(id), err)
+ 	}
+@@ -891,7 +944,7 @@ func (t *Transport) resolve(ctx context.Context, host string) (_ any, err error)
+ 	if len(addresses.Addresses) == 0 {
+ 		if bag := storageBagFromDomain(domain); bag != nil {
+ 			log.Warn().Str("host", host).Msg("ADNL site has no addresses in DHT, falling back to TON Storage record")
+-			return t.startBag(bag, host)
++			return t.startBag(ctx, bag, host)
+ 		}
+ 		return nil, fmt.Errorf("failed to find address of %s (%s) in DHT,no addresses in record", host, hex.EncodeToString(id))
+ 	}
+diff --git a/proxy/transport/storage.go b/proxy/transport/storage.go
+index fd10b2f..135f4b3 100644
+--- a/proxy/transport/storage.go
++++ b/proxy/transport/storage.go
+@@ -62,6 +62,20 @@ func (v *VirtualStorage) SetTorrent(t *storage.Torrent) error {
+ 	return nil
+ }
+ 
++func (v *VirtualStorage) RemoveTorrent(t *storage.Torrent) {
++	id, err := tl.Hash(keys.PublicKeyOverlay{Key: t.BagID})
++	if err != nil {
++		return
++	}
++
++	v.mx.Lock()
++	defer v.mx.Unlock()
++
++	if v.torrents[string(id)] == t {
++		delete(v.torrents, string(id))
++	}
++}
++
+ func (v *VirtualStorage) SetActiveFiles(bagId []byte, ids []uint32) error {
+ 	panic("virtual")
+ }

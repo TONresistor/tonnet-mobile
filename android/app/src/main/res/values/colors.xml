@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="tonnet_background">#212631</color>
+    <color name="tonnet_background_gradient">#CC212631</color>
+    <color name="tonnet_surface_dim">#303846</color>
+    <color name="tonnet_surface_bright">#303846</color>
+    <color name="tonnet_surface_blur">#99303846</color>
+    <color name="tonnet_surface_blur_opaque">#D9303846</color>
+    <color name="tonnet_text">#FFFFFF</color>
+    <color name="tonnet_text_secondary">#9DA2AA</color>
+    <color name="tonnet_accent">#50A8EB</color>
+    <color name="tonnet_tonsite_badge">#229ED9</color>
+    <color name="tonnet_accent_selected">#2650A8EB</color>
+    <color name="tonnet_accent_pressed">#3350A8EB</color>
+    <color name="tonnet_divider">#1AFFFFFF</color>
+    <color name="tonnet_disabled">#61FFFFFF</color>
+    <color name="tonnet_transparent">#00000000</color>
+    <color name="tonnet_icon_tunnel">#36C95F</color>
+    <color name="tonnet_icon_homepage">#418CD0</color>
+    <color name="tonnet_icon_javascript">#E0A422</color>
+    <color name="tonnet_icon_anti_fingerprinting">#4F8CEB</color>
+    <color name="tonnet_icon_language">#B15AD4</color>
+    <color name="tonnet_icon_clear_data">#E84D68</color>
+    <color name="tonnet_icon_about">#9B63D9</color>
+</resources>

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/tonnet_sheet_background"
+    android:orientation="vertical"
+    android:paddingBottom="8dp">
+
+    <View
+        android:layout_width="36dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/tonnet_sheet_handle"
+        android:importantForAccessibility="no" />
+
+    <TextView
+        android:id="@+id/sheet_title"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:fontFamily="sans-serif-medium"
+        android:gravity="center_vertical"
+        android:letterSpacing="0.005"
+        android:paddingHorizontal="22dp"
+        android:textColor="@color/tonnet_text"
+        android:textSize="20sp" />
+
+    <TextView
+        android:id="@+id/sheet_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="32dp"
+        android:textColor="@color/tonnet_text_secondary"
+        android:textSize="14sp"
+        android:visibility="gone" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/sheet_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:nestedScrollingEnabled="true"
+        android:overScrollMode="ifContentScrolls"
+        android:paddingHorizontal="12dp" />
+
+    <LinearLayout
+        android:id="@+id/sheet_actions"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:gravity="end|center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="12dp"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/close_tab_action"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:minHeight="44dp"
+            android:text="@string/close_tab"
+            android:textColor="@color/tonnet_accent"
+            android:textSize="14sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/new_tab_action"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="44dp"
+            android:minHeight="44dp"
+            android:text="@string/new_tab"
+            android:textColor="@color/tonnet_accent"
+            android:textSize="14sp" />
+    </LinearLayout>
+</LinearLayout>

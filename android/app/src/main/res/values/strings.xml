@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">TON Browser</string>
+    <string name="address_hint">Search a TON Site</string>
+    <string name="tonsite_badge" translatable="false">tonsite://</string>
+    <string name="action_back">Back</string>
+    <string name="action_forward">Forward</string>
+    <string name="action_tabs">Tabs</string>
+    <string name="action_home">Home</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_clear_address">Clear address</string>
+    <string name="action_add_bookmark">Add bookmark</string>
+    <string name="action_remove_bookmark">Remove bookmark</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_save">Save</string>
+    <string name="action_go">Go</string>
+    <string name="brand_description" translatable="false">Explore The Open Network</string>
+    <string name="landing_search_placeholder">Search a TON Site</string>
+    <string name="landing_connecting">Connecting…</string>
+    <string name="network_connecting">Connecting to TON…</string>
+    <string name="network_unavailable">TON unavailable</string>
+    <string name="network_unavailable_message">Couldn’t connect to TON. Try again.</string>
+    <string name="downloads_unavailable">Downloads unavailable</string>
+    <string name="downloads_disabled">Downloads aren’t supported.</string>
+    <string name="tonsite_unavailable">TON Site unavailable</string>
+    <string name="tonsite_load_failed">Couldn’t load this TON Site.</string>
+    <string name="ton_proxy_http_error">Couldn’t load this TON Site (error %1$d).</string>
+    <string name="webview_update_title">Update WebView</string>
+    <string name="webview_update_message">Update Android System WebView, then reopen TON Browser.</string>
+    <string name="invalid_address">Enter a .ton, .adnl or .t.me address.</string>
+    <string name="wallet_not_found">No TON wallet found.</string>
+    <string name="request_not_supported">Request not supported.</string>
+    <string name="blocked_for_privacy">Blocked for privacy.</string>
+    <string name="clear_data">Clear browsing data</string>
+    <string name="clear_data_done">Browsing data cleared</string>
+    <string name="clear_on_exit">Clear on exit</string>
+    <string name="clear_on_exit_description">Clear cookies and site data when the app closes</string>
+    <string name="private_data_error_title">Browser data unavailable</string>
+    <string name="legacy_data_reset_failed">Restart TON Browser and try again.</string>
+    <string name="private_session_error_title">Private session unavailable</string>
+    <string name="private_session_start_failed">Update Android System WebView, then reopen TON Browser.</string>
+    <string name="private_data_reset_failed">Couldn’t clear browsing data.</string>
+    <string name="settings_save_failed">Couldn’t save this setting.</string>
+    <string name="settings">Settings</string>
+    <string name="tunnel">Tunnel mode</string>
+    <string name="tunnel_explanation">2-hop connected</string>
+    <string name="direct_explanation">Connected</string>
+    <string name="homepage">Homepage</string>
+    <string name="homepage_default">Start page</string>
+    <string name="homepage_dialog_message">Enter a .ton, .adnl or .t.me address. Leave empty to use the start page.</string>
+    <string name="homepage_hint" translatable="false">example.ton</string>
+    <string name="javascript" translatable="false">JavaScript</string>
+    <string name="javascript_enabled">Enabled for TON Sites</string>
+    <string name="javascript_disabled">Disabled for stronger privacy</string>
+    <string name="anti_fingerprinting">Anti-fingerprinting</string>
+    <string name="anti_fingerprinting_enabled">Canvas, WebGL and audio protected</string>
+    <string name="anti_fingerprinting_disabled">Canvas, WebGL and audio unprotected</string>
+    <string name="anti_fingerprinting_javascript_disabled">Inactive while JavaScript is off</string>
+    <string name="language">Language</string>
+    <string name="language_english_native" translatable="false">English</string>
+    <string name="language_russian_native" translatable="false">Русский</string>
+    <string name="language_french_native" translatable="false">Français</string>
+    <string name="language_german_native" translatable="false">Deutsch</string>
+    <string name="language_chinese_native" translatable="false">中文</string>
+    <string name="language_spanish_native" translatable="false">Español</string>
+    <string name="language_italian_native" translatable="false">Italiano</string>
+    <string name="language_japanese_native" translatable="false">日本語</string>
+    <string name="language_korean_native" translatable="false">한국어</string>
+    <string name="language_turkish_native" translatable="false">Türkçe</string>
+    <string name="language_vietnamese_native" translatable="false">Tiếng Việt</string>
+    <string name="language_hindi_native" translatable="false">हिन्दी</string>
+    <string name="language_portuguese_native" translatable="false">Português</string>
+    <string name="language_ukrainian_native" translatable="false">Українська</string>
+    <string name="language_myanmar_native" translatable="false">မြန်မာ</string>
+    <string name="language_option_selected">%1$s, selected</string>
+    <string name="language_option_not_selected">%1$s, not selected</string>
+    <string name="about">About</string>
+    <string name="about_summary">%1$s · %2$s</string>
+    <string name="about_message">%1$s\nVersion %2$s\n\n%3$s</string>
+    <string name="bookmarks">Bookmarks</string>
+    <string name="no_bookmarks">No bookmarks yet</string>
+    <string name="bookmarks_unavailable">Bookmarks unavailable. Your bookmarks were kept.</string>
+    <string name="bookmark_added">Bookmark added</string>
+    <string name="bookmark_removed">Bookmark removed</string>
+    <string name="remove_named_bookmark">Remove bookmark %1$s</string>
+    <string name="tabs">Tabs</string>
+    <string name="new_tab">New tab</string>
+    <string name="new_tab_short">New</string>
+    <string name="close_tab">Close tab</string>
+    <string name="close_named_tab">Close tab %1$s</string>
+    <string name="maximum_tabs">Tab limit reached.</string>
+    <string name="tab_count_label">Tabs · %1$d</string>
+    <string name="state_on">On</string>
+    <string name="state_off">Off</string>
+    <string name="clear_data_confirmation">Cookies, site storage and open tabs will be deleted. Bookmarks are kept.</string>
+    <string name="renderer_restarted">Page restarted</string>
+    <string name="renderer_restarted_message">The page closed unexpectedly and was reloaded.</string>
+</resources>

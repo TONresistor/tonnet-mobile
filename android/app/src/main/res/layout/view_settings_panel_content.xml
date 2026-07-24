@@ -1,0 +1,591 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:ignore="MergeRootFrame">
+            <LinearLayout
+                android:id="@+id/settings_app_bar"
+                android:layout_width="match_parent"
+                android:layout_height="64dp"
+                android:layout_gravity="top"
+                android:background="@color/tonnet_background"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="20dp">
+
+                <TextView
+                    android:id="@+id/settings_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center_vertical"
+                    android:letterSpacing="0.005"
+                    android:text="@string/settings"
+                    android:textColor="@color/tonnet_text"
+                    android:textSize="20sp" />
+            </LinearLayout>
+
+            <ScrollView
+                android:id="@+id/settings_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:fillViewport="true"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:paddingHorizontal="12dp"
+                    android:paddingBottom="32dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/tonnet_settings_card_background"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/tunnel_setting_row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/tonnet_list_item_background"
+                            android:baselineAligned="false"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:importantForAccessibility="no"
+                            android:minHeight="60dp"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="19dp"
+                            android:paddingVertical="7dp">
+
+                            <FrameLayout
+                                android:id="@+id/tunnel_setting_icon"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:layout_marginEnd="18dp"
+                                android:background="@drawable/tonnet_settings_icon_background"
+                                android:backgroundTint="@color/tonnet_icon_tunnel"
+                                android:importantForAccessibility="no">
+
+                                <ImageView
+                                    android:id="@+id/tunnel_setting_icon_glyph"
+                                    android:layout_width="24dp"
+                                    android:layout_height="24dp"
+                                    android:layout_gravity="center"
+                                    android:importantForAccessibility="no"
+                                    android:src="@drawable/telegram_settings_icon_tunnel" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/tunnel_setting_title"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif"
+                                    android:gravity="center_vertical"
+                                    android:text="@string/tunnel"
+                                    android:textColor="@color/tonnet_text"
+                                    android:textSize="16sp" />
+
+                                <TextView
+                                    android:id="@+id/tunnel_setting_description"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif"
+                                    android:letterSpacing="0.04"
+                                    android:lineSpacingExtra="2dp"
+                                    android:text="@string/direct_explanation"
+                                    android:textColor="@color/tonnet_text_secondary"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+
+                            <com.tonnet.browser.ui.TelegramSwitchView
+                                android:id="@+id/tunnel_switch"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:contentDescription="@string/tunnel" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="65dp"
+                            android:background="@color/tonnet_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/homepage_setting_row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/tonnet_list_item_background"
+                            android:baselineAligned="false"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:minHeight="60dp"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="19dp"
+                            android:paddingVertical="7dp">
+
+                            <FrameLayout
+                                android:id="@+id/homepage_setting_icon"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:layout_marginEnd="18dp"
+                                android:background="@drawable/tonnet_settings_icon_background"
+                                android:backgroundTint="@color/tonnet_icon_homepage"
+                                android:importantForAccessibility="no">
+
+                                <ImageView
+                                    android:id="@+id/homepage_setting_icon_glyph"
+                                    android:layout_width="24dp"
+                                    android:layout_height="24dp"
+                                    android:layout_gravity="center"
+                                    android:importantForAccessibility="no"
+                                    android:src="@drawable/telegram_settings_icon_homepage" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/homepage_setting_title"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif"
+                                    android:text="@string/homepage"
+                                    android:textColor="@color/tonnet_text"
+                                    android:textSize="16sp" />
+
+                                <TextView
+                                    android:id="@+id/homepage_setting_value"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:ellipsize="middle"
+                                    android:fontFamily="sans-serif"
+                                    android:letterSpacing="0.04"
+                                    android:lineSpacingExtra="2dp"
+                                    android:maxLines="1"
+                                    android:text="@string/homepage_default"
+                                    android:textColor="@color/tonnet_text_secondary"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="65dp"
+                            android:background="@color/tonnet_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/javascript_setting_row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/tonnet_list_item_background"
+                            android:baselineAligned="false"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:importantForAccessibility="no"
+                            android:minHeight="60dp"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="19dp"
+                            android:paddingVertical="7dp">
+
+                            <FrameLayout
+                                android:id="@+id/javascript_setting_icon"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:layout_marginEnd="18dp"
+                                android:background="@drawable/tonnet_settings_icon_background"
+                                android:backgroundTint="@color/tonnet_icon_javascript"
+                                android:importantForAccessibility="no">
+
+                                <ImageView
+                                    android:id="@+id/javascript_setting_icon_glyph"
+                                    android:layout_width="24dp"
+                                    android:layout_height="24dp"
+                                    android:layout_gravity="center"
+                                    android:importantForAccessibility="no"
+                                    android:src="@drawable/telegram_settings_icon_javascript" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/javascript_setting_title"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif"
+                                    android:text="@string/javascript"
+                                    android:textColor="@color/tonnet_text"
+                                    android:textSize="16sp" />
+
+                                <TextView
+                                    android:id="@+id/javascript_setting_description"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif"
+                                    android:letterSpacing="0.04"
+                                    android:lineSpacingExtra="2dp"
+                                    android:text="@string/javascript_enabled"
+                                    android:textColor="@color/tonnet_text_secondary"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+
+                            <com.tonnet.browser.ui.TelegramSwitchView
+                                android:id="@+id/javascript_switch"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:contentDescription="@string/javascript" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="65dp"
+                            android:background="@color/tonnet_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/anti_fingerprinting_setting_row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/tonnet_list_item_background"
+                            android:baselineAligned="false"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:importantForAccessibility="no"
+                            android:minHeight="60dp"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="19dp"
+                            android:paddingVertical="7dp">
+
+                            <FrameLayout
+                                android:id="@+id/anti_fingerprinting_setting_icon"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:layout_marginEnd="18dp"
+                                android:background="@drawable/tonnet_settings_icon_background"
+                                android:backgroundTint="@color/tonnet_icon_anti_fingerprinting"
+                                android:importantForAccessibility="no">
+
+                                <ImageView
+                                    android:id="@+id/anti_fingerprinting_setting_icon_glyph"
+                                    android:layout_width="24dp"
+                                    android:layout_height="24dp"
+                                    android:layout_gravity="center"
+                                    android:importantForAccessibility="no"
+                                    android:src="@drawable/telegram_settings_icon_javascript" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/anti_fingerprinting_setting_title"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif"
+                                    android:text="@string/anti_fingerprinting"
+                                    android:textColor="@color/tonnet_text"
+                                    android:textSize="16sp" />
+
+                                <TextView
+                                    android:id="@+id/anti_fingerprinting_setting_description"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif"
+                                    android:letterSpacing="0.04"
+                                    android:lineSpacingExtra="2dp"
+                                    android:text="@string/anti_fingerprinting_enabled"
+                                    android:textColor="@color/tonnet_text_secondary"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+
+                            <com.tonnet.browser.ui.TelegramSwitchView
+                                android:id="@+id/anti_fingerprinting_switch"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:contentDescription="@string/anti_fingerprinting" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="65dp"
+                            android:background="@color/tonnet_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/language_setting_row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/tonnet_list_item_background"
+                            android:baselineAligned="false"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:minHeight="60dp"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="19dp"
+                            android:paddingVertical="7dp">
+
+                            <FrameLayout
+                                android:id="@+id/language_setting_icon"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:layout_marginEnd="18dp"
+                                android:background="@drawable/tonnet_settings_icon_background"
+                                android:backgroundTint="@color/tonnet_icon_language"
+                                android:importantForAccessibility="no">
+
+                                <ImageView
+                                    android:id="@+id/language_setting_icon_glyph"
+                                    android:layout_width="28dp"
+                                    android:layout_height="28dp"
+                                    android:layout_gravity="center"
+                                    android:importantForAccessibility="no"
+                                    android:src="@drawable/telegram_settings_icon_language" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/language_setting_title"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif"
+                                    android:text="@string/language"
+                                    android:textColor="@color/tonnet_text"
+                                    android:textSize="16sp" />
+
+                                <TextView
+                                    android:id="@+id/language_setting_value"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:ellipsize="end"
+                                    android:fontFamily="sans-serif"
+                                    android:letterSpacing="0.04"
+                                    android:lineSpacingExtra="2dp"
+                                    android:maxLines="1"
+                                    android:text="@string/language_english_native"
+                                    android:textColor="@color/tonnet_text_secondary"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="65dp"
+                            android:background="@color/tonnet_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/clear_data_setting_row"
+                            android:layout_width="match_parent"
+                            android:layout_height="60dp"
+                            android:background="@drawable/tonnet_list_item_background"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="19dp"
+                            android:paddingVertical="7dp">
+
+                            <FrameLayout
+                                android:id="@+id/clear_data_setting_icon"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:layout_marginEnd="18dp"
+                                android:background="@drawable/tonnet_settings_icon_background"
+                                android:backgroundTint="@color/tonnet_icon_clear_data"
+                                android:importantForAccessibility="no">
+
+                                <ImageView
+                                    android:id="@+id/clear_data_setting_icon_glyph"
+                                    android:layout_width="28dp"
+                                    android:layout_height="28dp"
+                                    android:layout_gravity="center"
+                                    android:importantForAccessibility="no"
+                                    android:src="@drawable/telegram_settings_icon_clear_data" />
+                            </FrameLayout>
+
+                            <TextView
+                                android:id="@+id/clear_data_setting_title"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:fontFamily="sans-serif"
+                                android:text="@string/clear_data"
+                                android:textColor="@color/tonnet_text"
+                                android:textSize="16sp" />
+                        </LinearLayout>
+
+                        <View
+                            android:layout_width="match_parent"
+                            android:layout_height="1dp"
+                            android:layout_marginStart="65dp"
+                            android:background="@color/tonnet_divider" />
+
+                        <LinearLayout
+                            android:id="@+id/clear_on_exit_setting_row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/tonnet_list_item_background"
+                            android:baselineAligned="false"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:importantForAccessibility="no"
+                            android:minHeight="60dp"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="19dp"
+                            android:paddingVertical="7dp">
+
+                            <FrameLayout
+                                android:id="@+id/clear_on_exit_setting_icon"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:layout_marginEnd="18dp"
+                                android:background="@drawable/tonnet_settings_icon_background"
+                                android:backgroundTint="@color/tonnet_icon_clear_data"
+                                android:importantForAccessibility="no">
+
+                                <ImageView
+                                    android:id="@+id/clear_on_exit_setting_icon_glyph"
+                                    android:layout_width="28dp"
+                                    android:layout_height="28dp"
+                                    android:layout_gravity="center"
+                                    android:importantForAccessibility="no"
+                                    android:src="@drawable/telegram_settings_icon_clear_data" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/clear_on_exit_setting_title"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif"
+                                    android:text="@string/clear_on_exit"
+                                    android:textColor="@color/tonnet_text"
+                                    android:textSize="16sp" />
+
+                                <TextView
+                                    android:id="@+id/clear_on_exit_setting_description"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif"
+                                    android:letterSpacing="0.04"
+                                    android:lineSpacingExtra="2dp"
+                                    android:text="@string/clear_on_exit_description"
+                                    android:textColor="@color/tonnet_text_secondary"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+
+                            <com.tonnet.browser.ui.TelegramSwitchView
+                                android:id="@+id/clear_on_exit_switch"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:contentDescription="@string/clear_on_exit" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:background="@drawable/tonnet_settings_card_background"
+                        android:orientation="vertical">
+
+                        <LinearLayout
+                            android:id="@+id/about_setting_row"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/tonnet_list_item_background"
+                            android:baselineAligned="false"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:gravity="center_vertical"
+                            android:minHeight="60dp"
+                            android:orientation="horizontal"
+                            android:paddingHorizontal="19dp"
+                            android:paddingVertical="7dp">
+
+                            <FrameLayout
+                                android:id="@+id/about_setting_icon"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:layout_marginEnd="18dp"
+                                android:background="@drawable/tonnet_settings_icon_background"
+                                android:backgroundTint="@color/tonnet_icon_about"
+                                android:importantForAccessibility="no">
+
+                                <ImageView
+                                    android:id="@+id/about_setting_icon_glyph"
+                                    android:layout_width="28dp"
+                                    android:layout_height="28dp"
+                                    android:layout_gravity="center"
+                                    android:importantForAccessibility="no"
+                                    android:src="@drawable/telegram_settings_icon_about" />
+                            </FrameLayout>
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical">
+
+                                <TextView
+                                    android:id="@+id/about_setting_title"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif"
+                                    android:text="@string/about"
+                                    android:textColor="@color/tonnet_text"
+                                    android:textSize="16sp" />
+
+                                <TextView
+                                    android:id="@+id/about_setting_value"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:ellipsize="end"
+                                    android:fontFamily="sans-serif"
+                                    android:letterSpacing="0.04"
+                                    android:maxLines="1"
+                                    android:textColor="@color/tonnet_text_secondary"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </ScrollView>
+</FrameLayout>

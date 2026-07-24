@@ -1,0 +1,215 @@
+diff --git a/proxy/proxy.go b/proxy/proxy.go
+index 6369da5..3b7a3ba 100644
+--- a/proxy/proxy.go
++++ b/proxy/proxy.go
+@@ -310,6 +310,13 @@ func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.
+ 
+ 	ctx, closer := context.WithCancel(closerCtx)
+ 	defer closer()
++	var tunnelDone chan struct{}
++	defer func() {
++		if tunnelDone != nil {
++			closer()
++			<-tunnelDone
++		}
++	}()
+ 
+ 	report(State{
+ 		Type:  "loading",
+@@ -317,7 +324,7 @@ func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.
+ 	})
+ 
+ 	log.Info().Msg("Initializing DNS resolver...")
+-	connPool, dnsClient, err := initDNSResolver(lsCfg)
++	connPool, dnsClient, err := initDNSResolver(ctx, lsCfg)
+ 	if err != nil {
+ 		return fmt.Errorf("failed to init TON DNS resolver: %w", err)
+ 	}
+@@ -371,7 +378,7 @@ func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.
+ 		// If pool is empty, discover tunnel relays from DHT
+ 		if len(tunNodesCfg.NodesPool) == 0 {
+ 			log.Info().Msg("Discovering tunnel relay nodes from DHT...")
+-			discovered := discoverTunnelNodes(lsCfg)
++			discovered := discoverTunnelNodes(ctx, lsCfg)
+ 			if len(discovered) == 0 {
+ 				return fmt.Errorf("no tunnel relay nodes found via DHT")
+ 			}
+@@ -396,6 +403,7 @@ func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.
+ 		tunnel.AskReroute = OnAskReroute
+ 		tunnel.Acceptor = OnAskAccept
+ 		events := make(chan any, 1)
++		tunnelDone = make(chan struct{})
+ 		go tunnel.RunTunnel(ctx, tunCfg, &tunNodesCfg, customTunNetCfg, log.Logger, events)
+ 
+ 		initUpd := make(chan any, 1)
+@@ -406,6 +414,7 @@ func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.
+ 				switch e := event.(type) {
+ 				case tunnel.StoppedEvent:
+ 					OnTunnelStopped()
++					close(tunnelDone)
+ 					return
+ 				case tunnel.MsgEvent:
+ 					if !inited {
+@@ -458,6 +467,10 @@ func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.
+ 						})
+ 
+ 						log.Info().Msg("connection switched to new tunnel")
++						report(State{
++							Type:  "ready",
++							State: "Ready",
++						})
+ 					}
+ 				case tunnel.ConfigurationErrorEvent:
+ 					report(State{
+@@ -474,7 +483,15 @@ func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.
+ 			}
+ 		}()
+ 
+-		switch x := (<-initUpd).(type) {
++		var initResult any
++		select {
++		case initResult = <-initUpd:
++		case <-ctx.Done():
++			<-tunnelDone
++			return ctx.Err()
++		}
++
++		switch x := initResult.(type) {
+ 		case tunnel.UpdatedEvent:
+ 			log.Info().
+ 				Str("ip", x.ExtIP.String()).
+@@ -571,8 +588,6 @@ func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.
+ 			return http.ErrUseLastResponse
+ 		},
+ 	}
+-	defer t.Stop()
+-
+ 	validForwards, fwWarnings := validateForwards(forwards, append([]string{".adnl", ".ton"}, multiRes.EnabledTLDs()...))
+ 	for _, w := range fwWarnings {
+ 		log.Warn().Str("warning", w).Msg("local forward config")
+@@ -637,6 +652,11 @@ func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.
+ 		})
+ 	}
+ 
++	t.Stop()
++	closer()
++	if tunnelDone != nil {
++		<-tunnelDone
++	}
+ 	return err
+ }
+ 
+@@ -724,10 +744,10 @@ func startForward(ctx context.Context, f Forward, blockHttp bool, version string
+ 	}()
+ }
+ 
+-func initDNSResolver(cfg *liteclient.GlobalConfig) (*liteclient.ConnectionPool, *dns.Client, error) {
++func initDNSResolver(ctx context.Context, cfg *liteclient.GlobalConfig) (*liteclient.ConnectionPool, *dns.Client, error) {
+ 	pool := liteclient.NewConnectionPool()
+ 
+-	err := pool.AddConnectionsFromConfig(context.Background(), cfg)
++	err := pool.AddConnectionsFromConfig(ctx, cfg)
+ 	if err != nil {
+ 		return nil, nil, err
+ 	}
+@@ -736,9 +756,13 @@ func initDNSResolver(cfg *liteclient.GlobalConfig) (*liteclient.ConnectionPool,
+ 
+ 	var root *address.Address
+ 	for i := 0; i < 5; i++ { // retry to absorb transient "block not found" from liteserver at startup
+-		root, err = dns.GetRootContractAddr(context.Background(), api)
++		root, err = dns.GetRootContractAddr(ctx, api)
+ 		if err != nil {
+-			time.Sleep(500 * time.Millisecond)
++			select {
++			case <-ctx.Done():
++				return nil, nil, ctx.Err()
++			case <-time.After(500 * time.Millisecond):
++			}
+ 			continue
+ 		}
+ 		break
+@@ -752,7 +776,7 @@ func initDNSResolver(cfg *liteclient.GlobalConfig) (*liteclient.ConnectionPool,
+ 
+ // discoverTunnelNodes creates a temporary DHT client, queries for tunnel relay
+ // nodes, and returns them as TunnelRouteSection entries ready for adnl-tunnel.
+-func discoverTunnelNodes(netCfg *liteclient.GlobalConfig) []tunnelConfig.TunnelRouteSection {
++func discoverTunnelNodes(parentCtx context.Context, netCfg *liteclient.GlobalConfig) []tunnelConfig.TunnelRouteSection {
+ 	// Create a temporary ADNL gateway + DHT client for discovery
+ 	_, tmpKey, err := ed25519.GenerateKey(nil)
+ 	if err != nil {
+@@ -780,7 +804,7 @@ func discoverTunnelNodes(netCfg *liteclient.GlobalConfig) []tunnelConfig.TunnelR
+ 		return nil
+ 	}
+ 
+-	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
++	ctx, cancel := context.WithTimeout(parentCtx, 90*time.Second)
+ 	defer cancel()
+ 
+ 	var allNodes []overlay.Node
+diff --git a/proxy/transport/client.go b/proxy/transport/client.go
+index d6ce8f4..e114f57 100644
+--- a/proxy/transport/client.go
++++ b/proxy/transport/client.go
+@@ -90,12 +90,15 @@ type bagInfo struct {
+ 	torrent    *storage.Torrent
+ 	downloader storage.TorrentDownloader
+ 	stop       context.CancelFunc
++	closeOnce  sync.Once
+ }
+ 
+ func (b *bagInfo) close() {
+-	b.downloader.Close()
+-	b.stop()
+-	b.torrent.Stop()
++	b.closeOnce.Do(func() {
++		b.downloader.Close()
++		b.stop()
++		b.torrent.Stop()
++	})
+ }
+ 
+ type downloaderResult struct {
+@@ -159,6 +162,7 @@ type Transport struct {
+ 	activeRequests map[string]*payloadStream
+ 	globalCtx      context.Context
+ 	stop           func()
++	stopOnce       sync.Once
+ 	mx             sync.RWMutex
+ }
+ 
+@@ -179,7 +183,34 @@ func NewTransport(gate *adnl.Gateway, dht DHT, resolver Resolver, pool *liteclie
+ }
+ 
+ func (t *Transport) Stop() {
+-	t.stop()
++	t.stopOnce.Do(func() {
++		t.stop()
++
++		t.mx.Lock()
++		sites := t.activeSites
++		requests := t.activeRequests
++		t.activeSites = map[string]*siteInfo{}
++		t.activeRequests = map[string]*payloadStream{}
++		t.mx.Unlock()
++
++		for _, stream := range requests {
++			_ = stream.Data.Close()
++		}
++		for _, info := range sites {
++			info.mx.Lock()
++			switch actor := info.Actor.(type) {
++			case *bagInfo:
++				actor.close()
++				t.store.RemoveTorrent(actor.torrent)
++			case *rldpInfo:
++				if actor.ActiveClient != nil {
++					actor.destroyClient(actor.ActiveClient)
++				}
++			}
++			info.Actor = nil
++			info.mx.Unlock()
++		}
++	})
+ }
+ 
+ func (t *Transport) cleaner() {

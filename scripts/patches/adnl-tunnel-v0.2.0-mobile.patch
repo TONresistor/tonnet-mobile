@@ -1,0 +1,41 @@
+diff --git a/tunnel/setup.go b/tunnel/setup.go
+index 234809f..a69be0e 100644
+--- a/tunnel/setup.go
++++ b/tunnel/setup.go
+@@ -196,8 +196,8 @@ reinit:
+ 			}
+ 
+ 			events <- ConfigurationErrorEvent{err}
+-			if !errors.Is(err, ErrNoMoreRoutes) && !errors.Is(err, ErrRouteIsNotAccepted) {
+-				time.Sleep(300 * time.Millisecond)
++			if !waitForRouteRetry(closerCtx, err, 300*time.Millisecond) {
++				return
+ 			}
+ 			continue
+ 		}
+@@ -236,6 +236,25 @@ reinit:
+ 	}
+ }
+ 
++func waitForRouteRetry(ctx context.Context, routeErr error, delay time.Duration) bool {
++	if ctx.Err() != nil {
++		return false
++	}
++	if errors.Is(routeErr, ErrNoMoreRoutes) || errors.Is(routeErr, ErrRouteIsNotAccepted) {
++		return true
++	}
++
++	timer := time.NewTimer(delay)
++	defer timer.Stop()
++
++	select {
++	case <-ctx.Done():
++		return false
++	case <-timer.C:
++		return true
++	}
++}
++
+ var ErrRouteCanceled = errors.New("route canceled")
+ var ErrRouteIsNotAccepted = errors.New("route is not accepted")
+ var ErrNoMoreRoutes = errors.New("no more routes to try")

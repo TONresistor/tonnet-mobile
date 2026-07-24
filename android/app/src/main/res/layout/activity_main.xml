@@ -1,0 +1,451 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:ignore="MergeRootFrame">
+
+    <eightbitlab.com.blurview.BlurTarget
+        android:id="@+id/browser_surface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/tonnet_background">
+
+        <com.tonnet.browser.ui.BrowserSwipeRefreshLayout
+            android:id="@+id/browser_refresh"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/tonnet_background">
+
+            <FrameLayout
+                android:id="@+id/web_container"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@color/tonnet_background" />
+        </com.tonnet.browser.ui.BrowserSwipeRefreshLayout>
+
+        <ScrollView
+            android:id="@+id/start_panel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:overScrollMode="ifContentScrolls"
+            android:paddingBottom="72dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingHorizontal="32dp"
+                android:paddingVertical="24dp">
+
+                <ImageView
+                    android:id="@+id/landing_animation"
+                    android:layout_width="160dp"
+                    android:layout_height="160dp"
+                    android:importantForAccessibility="no"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/tonnet_explorer_animation" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/explore_subtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:layout_marginBottom="32dp"
+                    android:fontFamily="sans-serif"
+                    android:gravity="center"
+                    android:text="@string/brand_description"
+                    android:textColor="@color/tonnet_text_secondary"
+                    android:textSize="18sp" />
+
+                <LinearLayout
+                    android:id="@+id/landing_search_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    android:background="@drawable/tonnet_landing_search_background"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:layout_marginStart="16dp"
+                        android:layout_marginEnd="12dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/tonnet_logo" />
+
+                    <EditText
+                        android:id="@+id/landing_search_input"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1"
+                        android:background="@color/tonnet_transparent"
+                        android:fontFamily="sans-serif"
+                        android:hint="@string/landing_search_placeholder"
+                        android:imeOptions="actionGo|flagNoPersonalizedLearning"
+                        android:importantForAutofill="no"
+                        android:inputType="textUri|textNoSuggestions"
+                        android:maxLines="1"
+                        android:padding="0dp"
+                        android:textColor="@color/tonnet_text"
+                        android:textColorHint="@color/tonnet_text_secondary"
+                        android:textSize="16sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/landing_search_button"
+                        style="@style/Widget.Material3.Button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="52dp"
+                        android:layout_margin="4dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:minWidth="64dp"
+                        android:paddingHorizontal="16dp"
+                        android:text="@string/landing_connecting"
+                        android:textAllCaps="false"
+                        android:textColor="@color/tonnet_text"
+                        android:textSize="14sp"
+                        app:backgroundTint="@color/tonnet_accent"
+                        app:cornerRadius="26dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </ScrollView>
+
+        <LinearLayout
+            android:id="@+id/error_panel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginHorizontal="24dp"
+            android:background="@drawable/tonnet_card_background"
+            android:elevation="12dp"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/error_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif"
+                android:gravity="center"
+                android:letterSpacing="0.02"
+                android:text="@string/network_unavailable"
+                android:textColor="@color/tonnet_text"
+                android:textSize="19sp" />
+
+            <TextView
+                android:id="@+id/error_message"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:gravity="center"
+                android:letterSpacing="0.02"
+                android:lineSpacingExtra="2dp"
+                android:textColor="@color/tonnet_text_secondary"
+                android:textSize="15sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/retry_button"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginTop="12dp"
+                android:minHeight="44dp"
+                android:text="@string/action_retry"
+                android:textColor="@color/tonnet_accent"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/page_progress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_gravity="top"
+            android:max="100"
+            android:progressTint="@color/tonnet_accent"
+            android:visibility="gone" />
+    </eightbitlab.com.blurview.BlurTarget>
+
+    <LinearLayout
+        android:id="@+id/top_chrome"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_gravity="top"
+        android:background="@color/tonnet_background"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="4dp">
+
+        <ImageButton
+            android:id="@+id/home_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/tonnet_list_item_background"
+            android:contentDescription="@string/action_home"
+            android:padding="12dp"
+            android:src="@drawable/telegram_settings_icon_homepage" />
+
+        <RelativeLayout
+            android:id="@+id/address_container"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_marginHorizontal="2dp"
+            android:layout_weight="1"
+            android:background="@drawable/tonnet_address_background"
+            android:elevation="3dp">
+
+            <FrameLayout
+                android:id="@+id/address_leading"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:layout_marginStart="13dp">
+
+                <ImageView
+                    android:id="@+id/address_ton_icon"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_gravity="center"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/tonnet_logo" />
+
+                <TextView
+                    android:id="@+id/address_tonsite_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/tonnet_tonsite_badge_background"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:importantForAccessibility="no"
+                    android:maxLines="1"
+                    android:paddingHorizontal="8dp"
+                    android:text="@string/tonsite_badge"
+                    android:textColor="@color/tonnet_text"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+            </FrameLayout>
+
+            <EditText
+                android:id="@+id/address_bar"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_centerVertical="true"
+                android:layout_marginStart="8dp"
+                android:layout_toStartOf="@id/address_actions"
+                android:layout_toEndOf="@id/address_leading"
+                android:background="@color/tonnet_transparent"
+                android:fontFamily="sans-serif"
+                android:hint="@string/address_hint"
+                android:imeOptions="actionGo|flagNoPersonalizedLearning"
+                android:importantForAutofill="no"
+                android:inputType="textUri|textNoSuggestions"
+                android:letterSpacing="0.03"
+                android:maxLines="1"
+                android:padding="0dp"
+                android:selectAllOnFocus="true"
+                android:textColor="@color/tonnet_text"
+                android:textColorHint="@color/tonnet_text_secondary"
+                android:textSize="14sp" />
+
+            <FrameLayout
+                    android:id="@+id/address_actions"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_alignParentEnd="true">
+
+                <ImageButton
+                    android:id="@+id/address_clear_button"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@color/tonnet_transparent"
+                    android:contentDescription="@string/action_clear_address"
+                    android:padding="10dp"
+                    android:src="@drawable/telegram_icon_backspace"
+                    android:visibility="gone" />
+
+                <ImageButton
+                    android:id="@+id/address_star_button"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@color/tonnet_transparent"
+                    android:contentDescription="@string/action_add_bookmark"
+                    android:padding="8dp"
+                    android:src="@drawable/telegram_icon_star_outline"
+                    android:visibility="gone" />
+            </FrameLayout>
+        </RelativeLayout>
+
+        <ImageButton
+            android:id="@+id/refresh_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/tonnet_list_item_background"
+            android:contentDescription="@string/action_refresh"
+            android:padding="12dp"
+            android:src="@drawable/telegram_icon_reload" />
+
+        <ImageButton
+            android:id="@+id/bookmarks_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/tonnet_list_item_background"
+            android:contentDescription="@string/bookmarks"
+            android:padding="12dp"
+            android:src="@drawable/telegram_icon_bookmarks" />
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/bottom_chrome"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:layout_gravity="bottom"
+        android:elevation="40dp">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/tonnet_bottom_gradient"
+            android:importantForAccessibility="no" />
+
+        <eightbitlab.com.blurview.BlurView
+            android:id="@+id/tabbar_blur"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_gravity="top"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/tonnet_tabbar_background"
+            android:elevation="3dp"
+            app:blurOverlayColor="@color/tonnet_surface_blur">
+
+            <LinearLayout
+                android:id="@+id/tabbar_items"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:baselineAligned="false"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:padding="4dp">
+
+                <TextView
+                    android:id="@+id/back_button"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/tonnet_tab_item_background"
+                    android:clickable="true"
+                    android:contentDescription="@string/action_back"
+                    android:drawablePadding="0dp"
+                    app:drawableTopCompat="@drawable/telegram_icon_back"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:letterSpacing="0.04"
+                    android:minWidth="48dp"
+                    android:text="@string/action_back"
+                    android:textColor="@color/tonnet_tab_text"
+                    android:textSize="11sp" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/forward_button"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/tonnet_tab_item_background"
+                    android:clickable="true"
+                    android:contentDescription="@string/action_forward"
+                    android:drawablePadding="0dp"
+                    app:drawableTopCompat="@drawable/telegram_icon_forward"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:letterSpacing="0.04"
+                    android:minWidth="48dp"
+                    android:text="@string/action_forward"
+                    android:textColor="@color/tonnet_tab_text"
+                    android:textSize="11sp" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/new_tab_button"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/tonnet_tab_item_background"
+                    android:clickable="true"
+                    android:contentDescription="@string/new_tab"
+                    android:drawablePadding="0dp"
+                    app:drawableTopCompat="@drawable/browser_icon_add"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:letterSpacing="0.04"
+                    android:minWidth="48dp"
+                    android:text="@string/new_tab_short"
+                    android:textColor="@color/tonnet_tab_text"
+                    android:textSize="11sp" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/tabs_button"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/tonnet_tab_item_background"
+                    android:clickable="true"
+                    android:contentDescription="@string/action_tabs"
+                    android:drawablePadding="0dp"
+                    app:drawableTopCompat="@drawable/telegram_icon_tabs"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:letterSpacing="0.04"
+                    android:minWidth="48dp"
+                    android:text="@string/tabs"
+                    android:textColor="@color/tonnet_tab_text"
+                    android:textSize="11sp" />
+
+                <androidx.appcompat.widget.AppCompatTextView
+                    android:id="@+id/settings_button"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/tonnet_tab_item_background"
+                    android:clickable="true"
+                    android:contentDescription="@string/settings"
+                    android:drawablePadding="0dp"
+                    app:drawableTopCompat="@drawable/telegram_icon_settings"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:gravity="center"
+                    android:letterSpacing="0.04"
+                    android:minWidth="48dp"
+                    android:text="@string/settings"
+                    android:textColor="@color/tonnet_tab_text"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </eightbitlab.com.blurview.BlurView>
+    </FrameLayout>
+
+    <eightbitlab.com.blurview.BlurTarget
+        android:id="@+id/settings_panel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/tonnet_background"
+        android:elevation="32dp"
+        android:visibility="gone">
+
+        <include
+            android:id="@+id/settings_panel_content"
+            layout="@layout/view_settings_panel_content"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </eightbitlab.com.blurview.BlurTarget>
+</FrameLayout>

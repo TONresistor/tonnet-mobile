@@ -1,0 +1,171 @@
+diff --git a/proxy/proxy.go b/proxy/proxy.go
+index f652643..2bb1a8b 100644
+--- a/proxy/proxy.go
++++ b/proxy/proxy.go
+@@ -23,7 +23,6 @@ import (
+ 	"github.com/xssnick/tonutils-go/ton"
+ 	"github.com/xssnick/tonutils-go/ton/dns"
+ 	"github.com/xssnick/tonutils-proxy/proxy/transport"
+-	"github.com/xssnick/tonutils-proxy/resolver"
+ 	"github.com/xssnick/tonutils-storage/config"
+ 	"github.com/xssnick/tonutils-storage/storage"
+ 	"io"
+@@ -41,28 +40,16 @@ const (
+ 	dhtDiscoverAttemptTimeout = 8 * time.Second
+ )
+ 
+-// Hop-by-hop headers (RFC 2616 §13) plus privacy-sensitive headers.
+-// Privacy headers follow Privoxy/Tor Browser stripping conventions.
+ var hopHeaders = []string{
+-	// RFC 2616 hop-by-hop
+ 	"Connection",
+ 	"Keep-Alive",
+ 	"Proxy-Authenticate",
+ 	"Proxy-Authorization",
+-	"Te", // canonicalized version of "TE"
+-	"Trailers",
++	"Proxy-Connection",
++	"Te",
++	"Trailer",
+ 	"Transfer-Encoding",
+ 	"Upgrade",
+-	// Privacy: tracking vectors
+-	"Origin",
+-	"Referer",
+-	// Privacy: proxy topology leaks
+-	"X-Forwarded-For",
+-	"X-Forwarded-Host",
+-	"X-Forwarded-Proto",
+-	"X-Real-Ip",
+-	"Forwarded",
+-	"Via",
+ }
+ 
+ func copyHeader(dst, src http.Header) {
+@@ -74,6 +61,13 @@ func copyHeader(dst, src http.Header) {
+ }
+ 
+ func delHopHeaders(header http.Header) {
++	for _, value := range header.Values("Connection") {
++		for _, name := range strings.Split(value, ",") {
++			if name = strings.TrimSpace(name); name != "" {
++				header.Del(name)
++			}
++		}
++	}
+ 	for _, h := range hopHeaders {
+ 		header.Del(h)
+ 	}
+@@ -142,6 +136,12 @@ func applyPrivacyHeaders(header http.Header) {
+ 		"Save-Data",
+ 		"Viewport-Width",
+ 		"Width",
++		"Forwarded",
++		"Via",
++		"X-Forwarded-For",
++		"X-Forwarded-Host",
++		"X-Forwarded-Proto",
++		"X-Real-Ip",
+ 		"X-Requested-With",
+ 		"X-Tonutils-Proxy",
+ 	} {
+@@ -153,9 +153,8 @@ func applyPrivacyHeaders(header http.Header) {
+ }
+ 
+ type proxy struct {
+-	version       string
+-	blockHttp     bool
+-	multiResolver *resolver.MultiResolver
++	version   string
++	blockHttp bool
+ }
+ 
+ var client *http.Client
+@@ -210,28 +209,6 @@ func (p *proxy) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
+ 	req.Header.Set("X-Tonutils-Proxy", p.version)
+ 	applyPrivacyHeaders(req.Header)
+ 
+-	// Resolve multi-chain domains (e.g. .eth) to .adnl before routing
+-	resolverHost := req.Host
+-	if h, _, err := net.SplitHostPort(resolverHost); err == nil {
+-		resolverHost = h
+-	}
+-	if len(resolverHost) > 253 {
+-		http.Error(wr, "invalid host", http.StatusBadRequest)
+-		return
+-	}
+-	if p.multiResolver != nil && p.multiResolver.Supports(resolverHost) {
+-		newHost, err := p.multiResolver.ResolveToADNL(resolverHost)
+-		if err != nil {
+-			http.Error(wr, fmt.Sprintf("Failed to resolve %s: %v", resolverHost, err), http.StatusBadGateway)
+-			return
+-		}
+-		log.Debug().Str("domain", resolverHost).Str("adnl", newHost).Msg("multi-chain resolved")
+-		// Keep the original Host header (e.g. "tonnet.eth") so the remote
+-		// server's nginx can match its server_name. Only rewrite URL.Host
+-		// so the RLDP transport routes to the correct .adnl address.
+-		req.URL.Host = newHost
+-	}
+-
+ 	c := client
+ 	log.Debug().Str("method", req.Method).Str("host", req.Host).Msg("over rldp")
+ 
+@@ -356,24 +333,6 @@ func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.
+ 	}
+ 	defer connPool.Stop()
+ 
+-	// Initialize multi-chain resolver (ENS, etc.)
+-	var multiRes *resolver.MultiResolver
+-	var warnings []string
+-	if multiChainCfg != nil {
+-		multiRes, warnings = resolver.InitAll(multiChainCfg.RPCOverrides, multiChainCfg.Disabled)
+-	} else {
+-		multiRes, warnings = resolver.InitAll(nil, nil)
+-	}
+-	for _, w := range warnings {
+-		log.Warn().Str("warning", w).Msg("chain resolver init failed")
+-	}
+-	if tlds := multiRes.EnabledTLDs(); len(tlds) > 0 {
+-		log.Info().Strs("tlds", tlds).Msg("Multi-chain resolver initialized")
+-	} else {
+-		log.Warn().Msg("No multi-chain resolvers available, only TON domains will work")
+-	}
+-	defer multiRes.Close()
+-
+ 	var gate *adnl.Gateway
+ 	var netMgr adnl.NetManager
+ 	if tunCfg != nil && tunCfg.TunnelSectionsNum >= 2 {
+@@ -618,19 +577,19 @@ func RunProxyWithConfig(closerCtx context.Context, addr string, adnlKey ed25519.
+ 			return http.ErrUseLastResponse
+ 		},
+ 	}
+-	validForwards, fwWarnings := validateForwards(forwards, append([]string{".adnl", ".ton"}, multiRes.EnabledTLDs()...))
++	validForwards, fwWarnings := validateForwards(forwards, []string{".adnl", ".ton", ".t.me"})
+ 	for _, w := range fwWarnings {
+ 		log.Warn().Str("warning", w).Msg("local forward config")
+ 	}
+ 	for _, f := range validForwards {
+-		startForward(ctx, f, blockHttp, versionAndDevice, multiRes)
++		startForward(ctx, f, blockHttp, versionAndDevice)
+ 	}
+ 
+ 	log.Info().Str("address", addr).Msg("Starting proxy server")
+ 
+ 	server := http.Server{
+ 		Addr:              addr,
+-		Handler:           &proxy{blockHttp: blockHttp, version: versionAndDevice, multiResolver: multiRes},
++		Handler:           &proxy{blockHttp: blockHttp, version: versionAndDevice},
+ 		ReadHeaderTimeout: 10 * time.Second,
+ 		WriteTimeout:      120 * time.Second,
+ 		IdleTimeout:       60 * time.Second,
+@@ -746,8 +705,8 @@ func isLoopbackHost(host string) bool {
+ 	return false
+ }
+ 
+-func startForward(ctx context.Context, f Forward, blockHttp bool, version string, mr *resolver.MultiResolver) {
+-	ph := &proxy{blockHttp: blockHttp, version: version, multiResolver: mr}
++func startForward(ctx context.Context, f Forward, blockHttp bool, version string) {
++	ph := &proxy{blockHttp: blockHttp, version: version}
+ 	srv := &http.Server{
+ 		Addr: f.Listen,
+ 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

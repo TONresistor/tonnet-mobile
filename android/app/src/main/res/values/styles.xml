@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme.Base" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">@color/tonnet_background</item>
+        <item name="android:navigationBarColor">@color/tonnet_background</item>
+        <item name="android:statusBarColor">@color/tonnet_background</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="colorAccent">@color/tonnet_accent</item>
+        <item name="colorPrimary">@color/tonnet_accent</item>
+        <item name="colorSecondary">@color/tonnet_accent</item>
+        <item name="colorSurface">@color/tonnet_surface_bright</item>
+        <item name="colorSurfaceVariant">@color/tonnet_surface_dim</item>
+        <item name="colorOnSurface">@color/tonnet_text</item>
+        <item name="colorOnSurfaceVariant">@color/tonnet_text_secondary</item>
+        <item name="colorOutline">@color/tonnet_divider</item>
+        <item name="bottomSheetDialogTheme">@style/TonnetBottomSheetDialogTheme</item>
+    </style>
+
+    <style name="AppTheme" parent="AppTheme.Base" />
+
+    <style name="TonnetBottomSheetDialogTheme" parent="Theme.Material3.Dark.BottomSheetDialog">
+        <item name="bottomSheetStyle">@style/TonnetBottomSheetStyle</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:navigationBarColor">@color/tonnet_background</item>
+    </style>
+
+    <style name="TonnetBottomSheetStyle" parent="Widget.Material3.BottomSheet.Modal">
+        <item name="android:background">@drawable/tonnet_sheet_background</item>
+        <item name="backgroundTint">@color/tonnet_surface_bright</item>
+        <item name="shapeAppearanceOverlay">@style/TonnetBottomSheetShape</item>
+    </style>
+
+    <style name="TonnetBottomSheetShape">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSizeTopLeft">12dp</item>
+        <item name="cornerSizeTopRight">12dp</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeBottomRight">0dp</item>
+    </style>
+</resources>

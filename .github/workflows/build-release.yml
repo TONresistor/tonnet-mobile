@@ -1,0 +1,457 @@
+name: Build signed APK
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      flavor:
+        description: APK channel
+        required: true
+        default: beta
+        type: choice
+        options: [beta, prod]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  JAVA_VERSION: "17"
+  GO_VERSION: "1.25.12"
+  GOTOOLCHAIN: local
+  GOVULNCHECK_VERSION: "v1.6.0"
+  TONNET_RUN_GOVULNCHECK: "1"
+  ANDROID_PLATFORM_VERSION: "36"
+  BUILD_TOOLS_VERSION: "36.0.0"
+  NDK_VERSION: "28.2.13676358"
+  CMAKE_VERSION: "3.22.1"
+  SYFT_VERSION: "1.49.0"
+  SYFT_LINUX_AMD64_SHA256: "7aa2f03ee92739cf643279ba3990548b9925d4e22cae13f46831ee62821147fe"
+  BETA_CERTIFICATE_SHA256: "c40d549bb70c5b8ac3ca1b3b35e6e621ca229fb58fc2684ad472a2d5dd121114"
+  PROD_CERTIFICATE_SHA256: "7b44097856ce15837d8795f77fc45f00947db1d169cfc2b49069e57980bf7ab9"
+
+jobs:
+  verify:
+    name: Verify release source
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    outputs:
+      flavor: ${{ steps.channel.outputs.flavor }}
+      prerelease: ${{ steps.channel.outputs.prerelease }}
+      release_tag: ${{ steps.channel.outputs.release_tag }}
+
+    steps:
+      - name: Checkout immutable source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Select and validate release channel
+        id: channel
+        env:
+          REQUESTED_FLAVOR: ${{ inputs.flavor }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            release_tag="$GITHUB_REF_NAME"
+            if [[ "$release_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+-beta([.-][0-9]+)?$ ]]; then
+              flavor="beta"
+              prerelease="true"
+              release_branch="dev"
+            elif [[ "$release_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              flavor="prod"
+              prerelease="false"
+              release_branch="main"
+            else
+              echo "Unsupported release tag: $release_tag" >&2
+              exit 1
+            fi
+            git fetch --no-tags origin "refs/heads/$release_branch"
+            branch_revision="$(git rev-parse FETCH_HEAD)"
+            if [[ "$(git rev-parse HEAD)" != "$branch_revision" ]]; then
+              echo "$release_tag must point to the current $release_branch revision." >&2
+              exit 1
+            fi
+          else
+            flavor="$REQUESTED_FLAVOR"
+            release_tag=""
+            prerelease="$([[ "$flavor" == "beta" ]] && echo true || echo false)"
+            expected_ref="$([[ "$flavor" == "beta" ]] && echo refs/heads/dev || echo refs/heads/main)"
+            if [[ "$GITHUB_REF" != "$expected_ref" ]]; then
+              echo "$flavor candidates must be built from $expected_ref." >&2
+              exit 1
+            fi
+          fi
+
+          case "$flavor" in
+            beta)
+              task="assembleBetaRelease"
+              lint_task="lintBetaRelease"
+              expected_package="com.tonnet.browser.beta"
+              ;;
+            prod)
+              task="assembleProdRelease"
+              lint_task="lintProdRelease"
+              expected_package="com.tonnet.browser"
+              ;;
+            *)
+              echo "Unsupported flavor: $flavor" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "flavor=$flavor" >> "$GITHUB_OUTPUT"
+          echo "task=$task" >> "$GITHUB_OUTPUT"
+          echo "lint_task=$lint_task" >> "$GITHUB_OUTPUT"
+          echo "expected_package=$expected_package" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Enforce repository boundaries
+        run: ./scripts/verify-repository-hygiene.sh
+
+      - name: Setup Java
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Install pinned Android toolchain
+        run: >-
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          --install
+          "platforms;android-${ANDROID_PLATFORM_VERSION}"
+          "build-tools;${BUILD_TOOLS_VERSION}"
+          "ndk;${NDK_VERSION}"
+          "cmake;${CMAKE_VERSION}"
+          "emulator"
+          "system-images;android-28;default;x86_64"
+          "system-images;android-${ANDROID_PLATFORM_VERSION};default;x86_64"
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: false
+          cache: false
+
+      - name: Install pinned Go vulnerability scanner
+        run: |
+          install_dir="$RUNNER_TEMP/go-tools"
+          mkdir -p "$install_dir"
+          GOBIN="$install_dir" go install \
+            "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}"
+          echo "$install_dir" >> "$GITHUB_PATH"
+
+      - name: Build and verify pinned TON proxy
+        env:
+          SOURCE_BUNDLE_OUTPUT: ${{ runner.temp }}/tonnet-corresponding-source.tar.gz
+        working-directory: android
+        run: ./gradlew --no-daemon :ton-proxy-android:buildNativeProxy
+
+      - name: Run Android quality gates and build release
+        working-directory: android
+        env:
+          RELEASE_TASK: ${{ steps.channel.outputs.task }}
+          LINT_TASK: ${{ steps.channel.outputs.lint_task }}
+        run: ./gradlew --no-daemon qualityGate "$LINT_TASK" "$RELEASE_TASK"
+
+      - name: Run network-independent Android tests
+        working-directory: android
+        run: >-
+          ./gradlew --no-daemon
+          pixel2Api36BetaDebugAndroidTest
+          -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
+
+      - name: Verify unsupported WebView handling on Android 9
+        working-directory: android
+        run: >-
+          ./gradlew --no-daemon
+          pixel2Api28BetaDebugAndroidTest
+          -Pandroid.testInstrumentationRunnerArguments.class=com.tonnet.browser.web.WebViewCompatibilitySmokeTest
+          -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
+
+      - name: Validate release metadata
+        env:
+          EXPECTED_PACKAGE: ${{ steps.channel.outputs.expected_package }}
+          FLAVOR: ${{ steps.channel.outputs.flavor }}
+          RELEASE_TAG: ${{ steps.channel.outputs.release_tag }}
+        run: |
+          output_dir="android/app/build/outputs/apk/${FLAVOR}/release"
+          metadata="$output_dir/output-metadata.json"
+          [[ -f "$metadata" ]] || { echo "Missing APK metadata." >&2; exit 1; }
+
+          application_id="$(jq -r '.applicationId' "$metadata")"
+          version_code="$(jq -r '.elements[0].versionCode' "$metadata")"
+          version_name="$(jq -r '.elements[0].versionName' "$metadata")"
+          output_file="$(jq -r '.elements[0].outputFile' "$metadata")"
+          unsigned="$output_dir/$output_file"
+
+          [[ "$application_id" == "$EXPECTED_PACKAGE" ]] || {
+            echo "Unexpected application ID: $application_id" >&2
+            exit 1
+          }
+          [[ "$version_code" =~ ^[1-9][0-9]*$ ]] || {
+            echo "Invalid version code: $version_code" >&2
+            exit 1
+          }
+          case "$FLAVOR" in
+            beta)
+              [[ "$version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+-beta([.-][0-9]+)?$ ]] || {
+                echo "Invalid beta version name: $version_name" >&2
+                exit 1
+              }
+              ;;
+            prod)
+              [[ "$version_name" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+                echo "Invalid production version name: $version_name" >&2
+                exit 1
+              }
+              ;;
+          esac
+          [[ -f "$unsigned" ]] || { echo "Unsigned APK not found." >&2; exit 1; }
+          if [[ -n "$RELEASE_TAG" && "$RELEASE_TAG" != "v$version_name" ]]; then
+            echo "Tag $RELEASE_TAG does not match version v$version_name." >&2
+            exit 1
+          fi
+
+          mkdir -p "$RUNNER_TEMP/release-input"
+          cp "$unsigned" "$RUNNER_TEMP/release-input/app-unsigned.apk"
+          cp "$RUNNER_TEMP/tonnet-corresponding-source.tar.gz" \
+            "$RUNNER_TEMP/release-input/tonnet-corresponding-source.tar.gz"
+
+      - name: Upload verified unsigned inputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tonnet-release-input-${{ steps.channel.outputs.flavor }}-${{ github.sha }}
+          path: ${{ runner.temp }}/release-input
+          if-no-files-found: error
+          retention-days: 1
+
+  sign:
+    name: Approve, sign and publish
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: release
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    outputs:
+      apk: ${{ steps.artifact.outputs.apk }}
+
+    steps:
+      - name: Checkout immutable source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download verified unsigned inputs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.0
+        with:
+          name: tonnet-release-input-${{ needs.verify.outputs.flavor }}-${{ github.sha }}
+          path: ${{ runner.temp }}/release-input
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@40fd30fb8d7440372e1316f5d1809ec01dcd3699 # v4.0.1
+
+      - name: Install pinned Android build tools
+        run: >-
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          --install
+          "build-tools;${BUILD_TOOLS_VERSION}"
+          "ndk;${NDK_VERSION}"
+
+      - name: Install checksummed SBOM generator
+        run: |
+          archive="$RUNNER_TEMP/syft.tar.gz"
+          install_dir="$RUNNER_TEMP/syft"
+          curl --fail-with-body --silent --show-error --location \
+            --output "$archive" \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          printf '%s  %s\n' "$SYFT_LINUX_AMD64_SHA256" "$archive" | sha256sum --check -
+          mkdir -p "$install_dir"
+          tar -xzf "$archive" -C "$install_dir" syft
+          echo "$install_dir" >> "$GITHUB_PATH"
+
+      - name: Align, sign and verify APK
+        id: artifact
+        env:
+          FLAVOR: ${{ needs.verify.outputs.flavor }}
+          RELEASE_TAG: ${{ needs.verify.outputs.release_tag }}
+          BETA_SIGNING_KEY: ${{ secrets.BETA_SIGNING_KEY }}
+          BETA_KEY_ALIAS: ${{ secrets.BETA_KEY_ALIAS }}
+          BETA_KEY_STORE_PASSWORD: ${{ secrets.BETA_KEY_STORE_PASSWORD }}
+          BETA_KEY_PASSWORD: ${{ secrets.BETA_KEY_PASSWORD }}
+          PROD_SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          PROD_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          PROD_KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          PROD_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          case "$FLAVOR" in
+            beta)
+              signing_key="$BETA_SIGNING_KEY"
+              key_alias="$BETA_KEY_ALIAS"
+              key_store_password="$BETA_KEY_STORE_PASSWORD"
+              key_password="$BETA_KEY_PASSWORD"
+              expected_certificate="$BETA_CERTIFICATE_SHA256"
+              ;;
+            prod)
+              signing_key="$PROD_SIGNING_KEY"
+              key_alias="$PROD_KEY_ALIAS"
+              key_store_password="$PROD_KEY_STORE_PASSWORD"
+              key_password="$PROD_KEY_PASSWORD"
+              expected_certificate="$PROD_CERTIFICATE_SHA256"
+              ;;
+          esac
+
+          for value in \
+            signing_key \
+            key_alias \
+            key_store_password \
+            key_password \
+            expected_certificate; do
+            if [[ -z "${!value}" ]]; then
+              echo "Missing $FLAVOR signing configuration: $value" >&2
+              exit 1
+            fi
+          done
+
+          unsigned="$RUNNER_TEMP/release-input/app-unsigned.apk"
+          source_input="$RUNNER_TEMP/release-input/tonnet-corresponding-source.tar.gz"
+          [[ -f "$unsigned" ]] || { echo "Unsigned APK not found." >&2; exit 1; }
+          [[ -f "$source_input" ]] || { echo "Source bundle not found." >&2; exit 1; }
+
+          version="${RELEASE_TAG:-${GITHUB_SHA::12}}"
+          version="${version//[^A-Za-z0-9._-]/-}"
+          output="tonnet-browser-${FLAVOR}-${version}.apk"
+          aligned="$RUNNER_TEMP/tonnet-aligned.apk"
+          keystore="$RUNNER_TEMP/tonnet-release.jks"
+          build_tools="$ANDROID_HOME/build-tools/$BUILD_TOOLS_VERSION"
+
+          printf '%s' "$signing_key" | base64 --decode > "$keystore"
+          "$build_tools/zipalign" -P 16 -f 4 "$unsigned" "$aligned"
+          KEY_STORE_PASSWORD="$key_store_password" KEY_PASSWORD="$key_password" \
+            "$build_tools/apksigner" sign \
+              --ks "$keystore" \
+              --ks-key-alias "$key_alias" \
+              --ks-pass "env:KEY_STORE_PASSWORD" \
+              --key-pass "env:KEY_PASSWORD" \
+              --out "$output" \
+              "$aligned"
+          ./scripts/verify-apk.sh "$output" "$expected_certificate"
+
+          sbom="${output%.apk}.cdx.json"
+          ./scripts/generate-sbom.sh "$output" "$sbom"
+          source_bundle="${output%.apk}-corresponding-source.tar.gz"
+          cp "$source_input" "$source_bundle"
+          checksums="${output%.apk}.SHA256SUMS"
+          sha256sum "$output" "$sbom" "$source_bundle" > "$checksums"
+
+          echo "apk=$output" >> "$GITHUB_OUTPUT"
+          echo "checksum=$checksums" >> "$GITHUB_OUTPUT"
+          echo "sbom=$sbom" >> "$GITHUB_OUTPUT"
+          echo "source_bundle=$source_bundle" >> "$GITHUB_OUTPUT"
+
+      - name: Attest signed APK provenance
+        uses: actions/attest@f7c74d28b9d84cb8768d0b8ca14a4bac6ef463e6 # v4.0.0
+        with:
+          subject-path: ${{ steps.artifact.outputs.apk }}
+
+      - name: Upload immutable workflow artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tonnet-signed-${{ needs.verify.outputs.flavor }}-${{ github.sha }}
+          path: |
+            ${{ steps.artifact.outputs.apk }}
+            ${{ steps.artifact.outputs.checksum }}
+            ${{ steps.artifact.outputs.sbom }}
+            ${{ steps.artifact.outputs.source_bundle }}
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish immutable GitHub release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+          RELEASE_TAG: ${{ needs.verify.outputs.release_tag }}
+          APK: ${{ steps.artifact.outputs.apk }}
+          CHECKSUM: ${{ steps.artifact.outputs.checksum }}
+          SBOM: ${{ steps.artifact.outputs.sbom }}
+          SOURCE_BUNDLE: ${{ steps.artifact.outputs.source_bundle }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release already exists: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          arguments=(
+            release create "$RELEASE_TAG"
+            "$APK" "$CHECKSUM" "$SBOM" "$SOURCE_BUNDLE"
+            --verify-tag
+            --generate-notes
+            --title "$RELEASE_TAG"
+          )
+          if [[ "$PRERELEASE" == "true" ]]; then
+            arguments+=(--prerelease)
+          else
+            arguments+=(--latest)
+          fi
+          gh "${arguments[@]}"
+
+  notify:
+    needs: [verify, sign]
+    runs-on: ubuntu-latest
+    if: always() && startsWith(github.ref, 'refs/tags/')
+
+    steps:
+      - name: Checkout notification context
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Send Telegram notification
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          VERIFY_RESULT: ${{ needs.verify.result }}
+          SIGN_RESULT: ${{ needs.sign.result }}
+        run: |
+          if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
+            echo "Telegram secrets not configured, skipping"
+            exit 0
+          fi
+
+          commit_title="$(git log -1 --pretty=format:'%s')"
+          commit_description="$(git log -1 --pretty=format:'%b' | head -20)"
+          commit_sha="$(git rev-parse --short HEAD)"
+          commit_url="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          text="<b>[Mobile] ${commit_title}</b>"
+          if [[ -n "$commit_description" ]]; then
+            printf -v text '%s\n\n%s' "$text" "$commit_description"
+          fi
+          if [[ "$VERIFY_RESULT" != "success" || "$SIGN_RESULT" != "success" ]]; then
+            printf -v text '%s\n\nRelease workflow failed.' "$text"
+          fi
+          printf -v text '%s\n\n<a href="%s">View commit %s</a>' \
+            "$text" "$commit_url" "$commit_sha"
+
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "parse_mode=HTML" \
+            --data-urlencode "disable_web_page_preview=true" \
+            --data-urlencode "text=$text"

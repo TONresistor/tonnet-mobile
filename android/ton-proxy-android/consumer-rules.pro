@@ -1,0 +1,2 @@
+-keep class com.tonnet.proxy.TonProxyService { *; }
+-keep class com.tonnet.proxy.NativeTonProxy { *; }
