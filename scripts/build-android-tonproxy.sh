@@ -69,10 +69,19 @@ if [[ "$resolved_adnl_tunnel_version" != "$ADNL_TUNNEL_VERSION" ]]; then
   echo "Unexpected adnl-tunnel version: $resolved_adnl_tunnel_version" >&2
   exit 1
 fi
+(
+  cd "$build_dir/source"
+  GOTOOLCHAIN="$GO_TOOLCHAIN" go mod download \
+    "$ADNL_TUNNEL_MODULE@$ADNL_TUNNEL_VERSION"
+)
 adnl_tunnel_source="$(
   cd "$build_dir/source"
   GOTOOLCHAIN="$GO_TOOLCHAIN" go list -m -f '{{.Dir}}' "$ADNL_TUNNEL_MODULE"
 )"
+if [[ -z "$adnl_tunnel_source" || ! -d "$adnl_tunnel_source" ]]; then
+  echo "adnl-tunnel source is unavailable: $ADNL_TUNNEL_MODULE@$ADNL_TUNNEL_VERSION" >&2
+  exit 1
+fi
 adnl_tunnel_build_source="$build_dir/source/third_party/adnl-tunnel"
 mkdir -p "$adnl_tunnel_build_source"
 cp -R "$adnl_tunnel_source/." "$adnl_tunnel_build_source"

@@ -10,14 +10,16 @@ import java.security.SecureRandom
 import java.util.concurrent.Executor
 import java.util.concurrent.atomic.AtomicBoolean
 
-class WebViewSessionManager {
+class WebViewSessionManager(
+    private val featureSupported: (String) -> Boolean = WebViewFeature::isFeatureSupported,
+) {
     private var profile: Profile? = null
     private var privacySeed: String? = null
 
     val profileName: String
         @SuppressLint("RequiresFeature")
         get() {
-            check(WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE))
+            check(featureSupported(WebViewFeature.MULTI_PROFILE))
             return requireNotNull(profile).name
         }
 
@@ -25,11 +27,14 @@ class WebViewSessionManager {
         get() = requireNotNull(privacySeed)
 
     @SuppressLint("WrongConstant")
-    fun unsupportedFeatures(): List<String> = REQUIRED_FEATURES.filterNot(WebViewFeature::isFeatureSupported)
+    fun unsupportedFeatures(): List<String> = REQUIRED_FEATURES.filterNot(featureSupported)
 
     @SuppressLint("RequiresFeature")
     fun startSession(): Result<Unit> = runCatching {
-        check(unsupportedFeatures().isEmpty())
+        val unsupported = unsupportedFeatures()
+        check(unsupported.isEmpty()) {
+            "Unsupported WebView features: ${unsupported.joinToString()}"
+        }
         val store = ProfileStore.getInstance()
         store.getAllProfileNames()
             .filter { it.startsWith(LEGACY_PROFILE_PREFIX) }
@@ -56,7 +61,7 @@ class WebViewSessionManager {
             return
         }
         runCatching {
-            check(WebViewFeature.isFeatureSupported(WebViewFeature.DELETE_BROWSING_DATA))
+            check(featureSupported(WebViewFeature.DELETE_BROWSING_DATA))
             WebView.clearClientCertPreferences(null)
             current.geolocationPermissions.clearAll()
             WebStorageCompat.deleteBrowsingData(current.webStorage, executor) {

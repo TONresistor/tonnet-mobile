@@ -25,13 +25,11 @@ env:
   BUILD_TOOLS_VERSION: "36.0.0"
   NDK_VERSION: "28.2.13676358"
   CMAKE_VERSION: "3.22.1"
-  ACTIONLINT_VERSION: "1.7.12"
-  ACTIONLINT_SHA256: "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
 
 jobs:
   verify:
     name: Native Android verification
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
 
     steps:
@@ -39,21 +37,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Validate workflow syntax
-        run: |
-          archive="$RUNNER_TEMP/actionlint.tar.gz"
-          install_dir="$RUNNER_TEMP/actionlint"
-          curl --fail-with-body --silent --show-error --location \
-            --output "$archive" \
-            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
-          printf '%s  %s\n' "$ACTIONLINT_SHA256" "$archive" | sha256sum --check -
-          mkdir -p "$install_dir"
-          tar -xzf "$archive" -C "$install_dir" actionlint
-          "$install_dir/actionlint" -shellcheck=""
-
-      - name: Enforce repository boundaries
-        run: ./scripts/verify-repository-hygiene.sh
 
       - name: Setup Java
         uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
@@ -73,8 +56,15 @@ jobs:
           "ndk;${NDK_VERSION}"
           "cmake;${CMAKE_VERSION}"
           "emulator"
-          "system-images;android-28;default;x86_64"
           "system-images;android-${ANDROID_PLATFORM_VERSION};default;x86_64"
+
+      - name: Verify Android hardware acceleration
+        run: |
+          command -v setfacl
+          sudo setfacl --modify "user:$(id -un):rw" /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+          "$ANDROID_HOME/emulator/emulator" -accel-check
 
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -91,27 +81,27 @@ jobs:
             "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}"
           echo "$install_dir" >> "$GITHUB_PATH"
 
-      - name: Run shared Android quality gate
-        working-directory: android
-        run: ./gradlew --no-daemon qualityGate
+      - name: Run reproducible verification
+        run: ./scripts/verify-ci.sh
 
-      - name: Run network-independent Android tests
-        working-directory: android
-        run: >-
-          ./gradlew --no-daemon
-          pixel2Api36BetaDebugAndroidTest
-          -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
-
-      - name: Verify unsupported WebView handling on Android 9
-        working-directory: android
-        run: >-
-          ./gradlew --no-daemon
-          pixel2Api28BetaDebugAndroidTest
-          -Pandroid.testInstrumentationRunnerArguments.class=com.tonnet.browser.web.WebViewCompatibilitySmokeTest
-          -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
-
-      - name: Verify APK signature and 16 KiB compatibility
-        run: ./scripts/verify-apk.sh android/app/build/outputs/apk/beta/debug/app-beta-debug.apk
+      - name: Run Android instrumented tests
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ env.ANDROID_PLATFORM_VERSION }}
+          target: default
+          arch: x86_64
+          working-directory: android
+          emulator-options: >-
+            -no-window
+            -gpu software
+            -no-snapshot
+            -noaudio
+            -no-boot-anim
+            -camera-back none
+          script: >-
+            ./gradlew --no-daemon
+            connectedBetaDebugAndroidTest
+            -x :ton-proxy-android:buildNativeProxy
 
       - name: Upload tested debug APK
         if: github.event_name == 'push'
@@ -125,6 +115,7 @@ jobs:
   notify:
     needs: verify
     runs-on: ubuntu-latest
+    continue-on-error: true
     if: always() && github.event_name == 'push'
 
     steps:

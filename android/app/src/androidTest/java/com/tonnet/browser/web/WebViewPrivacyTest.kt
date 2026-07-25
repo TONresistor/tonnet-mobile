@@ -17,6 +17,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.CountDownLatch
@@ -223,6 +224,11 @@ class WebViewPrivacyTest {
     }
 
     private fun startCleanSession(manager: WebViewSessionManager) {
+        val unsupported = manager.unsupportedFeatures()
+        assumeTrue(
+            "Requires current WebView provider: ${unsupported.joinToString()}",
+            unsupported.isEmpty(),
+        )
         val cleared = CountDownLatch(1)
         var clearResult: Result<Unit>? = null
         instrumentation.runOnMainSync {

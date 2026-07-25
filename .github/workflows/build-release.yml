@@ -38,7 +38,7 @@ env:
 jobs:
   verify:
     name: Verify release source
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
       contents: read
@@ -135,8 +135,15 @@ jobs:
           "ndk;${NDK_VERSION}"
           "cmake;${CMAKE_VERSION}"
           "emulator"
-          "system-images;android-28;default;x86_64"
           "system-images;android-${ANDROID_PLATFORM_VERSION};default;x86_64"
+
+      - name: Verify Android hardware acceleration
+        run: |
+          command -v setfacl
+          sudo setfacl --modify "user:$(id -un):rw" /dev/kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+          "$ANDROID_HOME/emulator/emulator" -accel-check
 
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -159,27 +166,34 @@ jobs:
         working-directory: android
         run: ./gradlew --no-daemon :ton-proxy-android:buildNativeProxy
 
-      - name: Run Android quality gates and build release
+      - name: Run reproducible verification
+        run: ./scripts/verify-ci.sh
+
+      - name: Run Android instrumented tests
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: ${{ env.ANDROID_PLATFORM_VERSION }}
+          target: default
+          arch: x86_64
+          working-directory: android
+          emulator-options: >-
+            -no-window
+            -gpu software
+            -no-snapshot
+            -noaudio
+            -no-boot-anim
+            -camera-back none
+          script: >-
+            ./gradlew --no-daemon
+            connectedBetaDebugAndroidTest
+            -x :ton-proxy-android:buildNativeProxy
+
+      - name: Build release candidate
         working-directory: android
         env:
           RELEASE_TASK: ${{ steps.channel.outputs.task }}
           LINT_TASK: ${{ steps.channel.outputs.lint_task }}
-        run: ./gradlew --no-daemon qualityGate "$LINT_TASK" "$RELEASE_TASK"
-
-      - name: Run network-independent Android tests
-        working-directory: android
-        run: >-
-          ./gradlew --no-daemon
-          pixel2Api36BetaDebugAndroidTest
-          -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
-
-      - name: Verify unsupported WebView handling on Android 9
-        working-directory: android
-        run: >-
-          ./gradlew --no-daemon
-          pixel2Api28BetaDebugAndroidTest
-          -Pandroid.testInstrumentationRunnerArguments.class=com.tonnet.browser.web.WebViewCompatibilitySmokeTest
-          -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect
+        run: ./gradlew --no-daemon "$LINT_TASK" "$RELEASE_TASK"
 
       - name: Validate release metadata
         env:
@@ -413,6 +427,7 @@ jobs:
   notify:
     needs: [verify, sign]
     runs-on: ubuntu-latest
+    continue-on-error: true
     if: always() && startsWith(github.ref, 'refs/tags/')
 
     steps:

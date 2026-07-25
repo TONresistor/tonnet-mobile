@@ -155,7 +155,9 @@ internal class DelegatedTMeRequestLoader(
             responseHeaders,
             DisconnectingInputStream(rawStream, connection),
         ).apply {
-            setCookies(responseCookies)
+            if (responseCookies.isNotEmpty()) {
+                setCookies(responseCookies)
+            }
         }.toWebResourceResponse()
     }
 

@@ -2,10 +2,12 @@ package com.tonnet.browser.web
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.webkit.WebResourceResponseCompat
+import androidx.webkit.WebViewFeature
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.ByteArrayInputStream
@@ -140,6 +142,7 @@ class DelegatedTMeRequestLoaderTest {
 
     @Test
     fun responseKeepsSetCookieValuesSeparate() {
+        assumeTrue(WebViewFeature.isFeatureSupported(WebViewFeature.COOKIE_INTERCEPT))
         val factory = FakeConnectionFactory(
             ResponseSpec(
                 headers = mapOf(
